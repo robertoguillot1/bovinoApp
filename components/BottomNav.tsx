@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutGrid, ClipboardList, Users, Settings, ArrowLeftRight } from 'lucide-react';
+import { LayoutGrid, Store, Users, Settings, ArrowLeftRight } from 'lucide-react';
 
 export const BottomNav: React.FC = () => {
   const navigate = useNavigate();
@@ -21,7 +21,7 @@ export const BottomNav: React.FC = () => {
   return (
     <nav className="fixed bottom-0 w-full bg-surface-dark/95 backdrop-blur-md border-t border-white/5 px-2 py-2 pb-6 flex justify-between items-center z-50">
       <NavItem path="/" icon={LayoutGrid} label="Inicio" />
-      <NavItem path="/inventory" icon={ClipboardList} label="Inventario" />
+      <NavItem path="/market" icon={Store} label="Mercado" />
       <NavItem path="/transfers" icon={ArrowLeftRight} label="Traslados" />
       <NavItem path="/hr" icon={Users} label="Equipo" />
       <NavItem path="/settings" icon={Settings} label="Ajustes" />

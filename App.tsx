@@ -5,6 +5,7 @@ import Inventory from './pages/Inventory';
 import AnimalDetail from './pages/AnimalDetail';
 import Transfers from './pages/Transfers';
 import HR from './pages/HR';
+import Market from './pages/Market';
 import RegisterFarm from './pages/RegisterFarm';
 import RegisterWorker from './pages/RegisterWorker';
 import EditWorker from './pages/EditWorker';
@@ -27,6 +28,7 @@ const App: React.FC = () => {
         <Route path="/" element={<Dashboard />} />
         <Route path="/farms" element={<FarmsList />} />
         <Route path="/inventory" element={<Inventory />} />
+        <Route path="/market" element={<Market />} />
         <Route path="/animal/:id" element={<AnimalDetail />} />
         <Route path="/genealogy/:id" element={<GenealogyTree />} />
         <Route path="/transfers" element={<Transfers />} />

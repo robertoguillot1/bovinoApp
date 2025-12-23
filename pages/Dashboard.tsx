@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, MoreHorizontal, Droplets, TrendingUp, Users, Plus, ArrowRight, Gauge, Bell, AlertTriangle, CheckCircle2, Info, X, BrainCircuit } from 'lucide-react';
+import { MapPin, MoreHorizontal, Droplets, TrendingUp, Users, Plus, ArrowRight, Gauge, Bell, AlertTriangle, CheckCircle2, Info, X, BrainCircuit, ClipboardList } from 'lucide-react';
 import { BottomNav } from '../components/BottomNav';
 import { farmsData, allBovines, mockNotifications } from '../mockData';
 
@@ -256,8 +256,19 @@ const Dashboard: React.FC = () => {
         <section className="px-5 pb-8">
           <h2 className="text-lg font-bold mb-3">Acciones Rápidas</h2>
           <div className="grid grid-cols-1 gap-3">
-            <button onClick={() => navigate('/transfers')} className="flex items-center gap-4 bg-surface-dark p-4 rounded-xl border border-white/5 active:scale-[0.98] transition-all">
-              <div className="bg-primary/10 text-primary p-2 rounded-lg">
+            <button onClick={() => navigate('/inventory')} className="flex items-center gap-4 bg-surface-dark p-4 rounded-xl border border-white/5 active:scale-[0.98] transition-all group hover:border-white/10">
+              <div className="bg-teal-500/10 text-teal-400 p-2 rounded-lg group-hover:bg-teal-500/20 transition-colors">
+                <ClipboardList size={24} />
+              </div>
+              <div className="text-left flex-1">
+                <h3 className="font-bold text-white">Gestionar Inventario</h3>
+                <p className="text-xs text-gray-500">Ver listado global de animales</p>
+              </div>
+              <ArrowRight size={20} className="text-gray-400" />
+            </button>
+
+            <button onClick={() => navigate('/transfers')} className="flex items-center gap-4 bg-surface-dark p-4 rounded-xl border border-white/5 active:scale-[0.98] transition-all group hover:border-white/10">
+              <div className="bg-primary/10 text-primary p-2 rounded-lg group-hover:bg-primary/20 transition-colors">
                 <ArrowRight size={24} />
               </div>
               <div className="text-left flex-1">
@@ -267,8 +278,8 @@ const Dashboard: React.FC = () => {
               <ArrowRight size={20} className="text-gray-400" />
             </button>
 
-            <button onClick={() => navigate('/veterinary-ai/general')} className="flex items-center gap-4 bg-surface-dark p-4 rounded-xl border border-white/5 active:scale-[0.98] transition-all">
-              <div className="bg-indigo-500/10 text-indigo-400 p-2 rounded-lg">
+            <button onClick={() => navigate('/veterinary-ai/general')} className="flex items-center gap-4 bg-surface-dark p-4 rounded-xl border border-white/5 active:scale-[0.98] transition-all group hover:border-white/10">
+              <div className="bg-indigo-500/10 text-indigo-400 p-2 rounded-lg group-hover:bg-indigo-500/20 transition-colors">
                 <BrainCircuit size={24} />
               </div>
               <div className="text-left flex-1">
