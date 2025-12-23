@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, Plus, MapPin, TrendingUp, TrendingDown, Calendar, Wallet, X, Check, DollarSign, Banknote, History, Clock, FileText, Edit2, ChevronLeft, ChevronRight, Bell } from 'lucide-react';
+import { ArrowLeft, Search, Plus, MapPin, TrendingUp, TrendingDown, Calendar, Wallet, X, Check, DollarSign, Banknote, History, Clock, FileText, Edit2, ChevronLeft, ChevronRight, Bell, AlignLeft } from 'lucide-react';
 import { BottomNav } from '../components/BottomNav';
 import { Worker, WorkerTask, WorkerEvent } from '../types';
 import { mockTasks, mockEvents, mockNotifications } from '../mockData';
@@ -40,7 +41,9 @@ const HR: React.FC = () => {
   // Task Creation
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskDesc, setNewTaskDesc] = useState('');
   const [newTaskLoc, setNewTaskLoc] = useState('');
+  const [newTaskDueDate, setNewTaskDueDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Calendar Event Creation
   const [showEventModal, setShowEventModal] = useState(false);
@@ -95,13 +98,19 @@ const HR: React.FC = () => {
         id: Date.now().toString(),
         workerId: selectedWorker?.id || '',
         title: newTaskTitle,
+        description: newTaskDesc,
         location: newTaskLoc || 'General',
         priority: 'Normal',
-        isCompleted: false
+        isCompleted: false,
+        dueDate: newTaskDueDate
     };
     setTasks([newTask, ...tasks]);
+    
+    // Reset Form
     setNewTaskTitle('');
+    setNewTaskDesc('');
     setNewTaskLoc('');
+    setNewTaskDueDate(new Date().toISOString().split('T')[0]);
     setShowTaskModal(false);
   };
 
@@ -278,9 +287,17 @@ const HR: React.FC = () => {
                                                 <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-accent-amber/20 text-accent-amber border border-accent-amber/20">Urgente</span>
                                             )}
                                         </div>
-                                        <div className="flex items-center gap-1.5 text-gray-400 text-sm mb-1">
-                                            <MapPin size={14} />
+                                        <p className="text-xs text-gray-400 mb-2 line-clamp-1">{task.description}</p>
+                                        <div className="flex items-center gap-1.5 text-gray-500 text-[10px] font-bold">
+                                            <MapPin size={12} />
                                             <span>{task.location}</span>
+                                            {task.dueDate && (
+                                                <>
+                                                    <span className="mx-1">•</span>
+                                                    <Calendar size={12} />
+                                                    <span>{task.dueDate}</span>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -389,38 +406,115 @@ const HR: React.FC = () => {
 
              {/* === MODALS === */}
 
-             {/* Add Task Modal */}
+             {/* Add Task Modal (Updated UI - Full Screen) */}
              {showTaskModal && (
-                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                     <div className="bg-surface-dark w-full max-w-sm rounded-2xl border border-white/10 p-6 animate-in zoom-in-95">
-                         <h3 className="text-lg font-bold mb-4">Nueva Tarea</h3>
-                         <div className="space-y-4">
+                 <div className="fixed inset-0 z-50 bg-background-dark flex flex-col animate-in slide-in-from-bottom-5">
+                     {/* Header */}
+                     <div className="p-4 flex items-center justify-between border-b border-white/5">
+                         <button onClick={() => setShowTaskModal(false)} className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors">
+                             <ArrowLeft size={24} />
+                         </button>
+                         <h2 className="text-lg font-bold">Asignar Tarea</h2>
+                         <div className="w-10"></div> {/* Spacer for center alignment */}
+                     </div>
+
+                     <main className="flex-1 overflow-y-auto p-6">
+                         <h1 className="text-3xl font-bold text-white mb-2">Nueva Actividad</h1>
+                         <p className="text-gray-400 text-sm mb-8">Complete los detalles para asignar al personal.</p>
+
+                         <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); addNewTask(); }}>
+                             
+                             {/* Title Input */}
                              <div>
-                                 <label className="text-xs text-gray-400 font-bold uppercase">Título</label>
-                                 <input 
-                                    type="text" 
-                                    value={newTaskTitle}
-                                    onChange={(e) => setNewTaskTitle(e.target.value)}
-                                    placeholder="Ej: Vacunar Lote 3"
-                                    className="w-full bg-surface-darker border border-white/10 rounded-lg p-3 mt-1 text-white focus:border-primary outline-none"
-                                    autoFocus
+                                 <label className="flex items-center gap-2 text-sm font-bold text-gray-300 mb-3">
+                                     <div className="w-1 h-4 bg-primary rounded-full"></div>
+                                     Nombre de la Actividad
+                                 </label>
+                                 <input
+                                     type="text"
+                                     value={newTaskTitle}
+                                     onChange={(e) => setNewTaskTitle(e.target.value)}
+                                     placeholder="Ej: Vacunación Lote 5"
+                                     className="w-full bg-surface-dark border border-white/10 rounded-2xl p-4 text-white placeholder-gray-600 focus:border-primary outline-none transition-all font-bold text-lg"
+                                     autoFocus
                                  />
                              </div>
+
+                             {/* Description */}
                              <div>
-                                 <label className="text-xs text-gray-400 font-bold uppercase">Ubicación</label>
-                                 <input 
-                                    type="text" 
-                                    value={newTaskLoc}
-                                    onChange={(e) => setNewTaskLoc(e.target.value)}
-                                    placeholder="Ej: Potrero Norte"
-                                    className="w-full bg-surface-darker border border-white/10 rounded-lg p-3 mt-1 text-white focus:border-primary outline-none"
+                                 <label className="flex items-center gap-2 text-sm font-bold text-gray-300 mb-3">
+                                     <AlignLeft size={18} className="text-primary" />
+                                     Descripción
+                                 </label>
+                                 <div className="relative">
+                                     <textarea
+                                         value={newTaskDesc}
+                                         onChange={(e) => setNewTaskDesc(e.target.value)}
+                                         placeholder="Describa la tarea detalladamente. Ej: Revisar bebederos sector sur..."
+                                         rows={4}
+                                         className="w-full bg-surface-dark border border-white/10 rounded-2xl p-4 text-gray-300 placeholder-gray-600 focus:border-primary outline-none transition-all resize-none text-sm leading-relaxed"
+                                     />
+                                     <div className="absolute bottom-4 right-4 text-gray-600">
+                                         <Edit2 size={16} />
+                                     </div>
+                                 </div>
+                             </div>
+
+                             {/* Location */}
+                             <div>
+                                 <label className="flex items-center gap-2 text-sm font-bold text-gray-300 mb-3">
+                                     <MapPin size={18} className="text-primary" />
+                                     Ubicación
+                                 </label>
+                                 <input
+                                     type="text"
+                                     value={newTaskLoc}
+                                     onChange={(e) => setNewTaskLoc(e.target.value)}
+                                     placeholder="Ej: Potrero Norte"
+                                     className="w-full bg-surface-dark border border-white/10 rounded-2xl p-4 text-white placeholder-gray-600 focus:border-primary outline-none transition-all"
                                  />
                              </div>
-                             <div className="flex gap-2 pt-2">
-                                 <button onClick={() => setShowTaskModal(false)} className="flex-1 py-3 rounded-xl bg-white/5 font-bold hover:bg-white/10">Cancelar</button>
-                                 <button onClick={addNewTask} className="flex-1 py-3 rounded-xl bg-primary text-black font-bold hover:bg-primary-dark">Crear Tarea</button>
+
+                             {/* Due Date - Card Style */}
+                             <div>
+                                 <label className="block text-sm font-bold text-gray-300 mb-3">Fecha de vencimiento</label>
+                                 <div className="bg-surface-dark border border-white/10 rounded-2xl p-4 flex items-center justify-between group cursor-pointer hover:border-white/20 transition-all relative">
+                                     <div className="flex items-center gap-4">
+                                         <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                             <Calendar size={24} />
+                                         </div>
+                                         <div>
+                                             <p className="font-bold text-white text-base">
+                                                 {newTaskDueDate === new Date().toISOString().split('T')[0] ? 'Para hoy' : newTaskDueDate}
+                                             </p>
+                                             <p className="text-xs text-gray-500 capitalize">
+                                                 {new Date(newTaskDueDate).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}
+                                             </p>
+                                         </div>
+                                     </div>
+                                     <Edit2 size={18} className="text-gray-500 group-hover:text-white transition-colors" />
+                                     
+                                     {/* Invisible Date Input Overlay */}
+                                     <input 
+                                        type="date" 
+                                        value={newTaskDueDate}
+                                        onChange={(e) => setNewTaskDueDate(e.target.value)}
+                                        className="absolute inset-0 opacity-0 cursor-pointer"
+                                     />
+                                 </div>
                              </div>
-                         </div>
+
+                         </form>
+                     </main>
+
+                     {/* Footer Action */}
+                     <div className="p-6 border-t border-white/5 bg-background-dark/95 backdrop-blur-sm">
+                         <button 
+                            onClick={addNewTask}
+                            className="w-full h-14 bg-primary hover:bg-primary-dark text-background-dark font-bold text-lg rounded-full flex items-center justify-center gap-2 active:scale-[0.98] transition-all shadow-lg shadow-primary/20"
+                         >
+                             Asignar Tarea
+                         </button>
                      </div>
                  </div>
              )}

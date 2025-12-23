@@ -94,4 +94,5 @@ export interface MarketListing {
   };
   type: 'Individual' | 'Lote';
   createdAt: string;
+  isFavorite?: boolean;
 }

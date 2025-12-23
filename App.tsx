@@ -9,6 +9,7 @@ import HR from './pages/HR';
 import Market from './pages/Market';
 import ListingDetail from './pages/ListingDetail';
 import CreateListing from './pages/CreateListing';
+import MyListings from './pages/MyListings';
 import RegisterFarm from './pages/RegisterFarm';
 import RegisterWorker from './pages/RegisterWorker';
 import EditWorker from './pages/EditWorker';
@@ -34,6 +35,7 @@ const App: React.FC = () => {
         
         {/* Marketplace Routes */}
         <Route path="/market" element={<Market />} />
+        <Route path="/market/my-listings" element={<MyListings />} />
         <Route path="/market/:id" element={<ListingDetail />} />
         <Route path="/market/create" element={<CreateListing />} />
 

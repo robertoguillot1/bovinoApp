@@ -125,7 +125,8 @@ export const marketListings: MarketListing[] = [
     verified: true,
     stats: { age: '36 Meses', weight: '850 kg', gender: 'Macho', breed: 'Brahman' },
     type: 'Individual',
-    createdAt: 'Hace 2 horas'
+    createdAt: 'Hace 2 horas',
+    isFavorite: false
   },
   {
     id: 'm2',
@@ -139,7 +140,8 @@ export const marketListings: MarketListing[] = [
     verified: true,
     stats: { age: '4 Años (Prom)', weight: '480 kg', gender: 'Hembra', breed: 'Holstein' },
     type: 'Lote',
-    createdAt: 'Hace 5 horas'
+    createdAt: 'Hace 5 horas',
+    isFavorite: true
   },
   {
     id: 'm3',
@@ -153,6 +155,7 @@ export const marketListings: MarketListing[] = [
     verified: false,
     stats: { age: '5 Años', weight: '420 kg', gender: 'Macho', breed: 'Cuarto de Milla' },
     type: 'Individual',
-    createdAt: 'Ayer'
+    createdAt: 'Ayer',
+    isFavorite: false
   }
 ];
