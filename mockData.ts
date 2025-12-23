@@ -1,4 +1,5 @@
-import { Bovine, Farm, AppNotification, WorkerTask, WorkerEvent } from './types';
+
+import { Bovine, Farm, AppNotification, WorkerTask, WorkerEvent, MarketListing } from './types';
 
 export const farmsData: Farm[] = [
   {
@@ -109,4 +110,49 @@ export const mockEvents: WorkerEvent[] = [
     { id: 'e2', workerId: '1', date: '2023-10-26', type: 'Attendance', status: 'Present' },
     { id: 'e3', workerId: '1', date: '2023-10-27', type: 'Attendance', status: 'Absent' },
     { id: 'e4', workerId: '1', date: '2023-10-30', type: 'Reminder', title: 'Salida Vacaciones' },
+];
+
+export const marketListings: MarketListing[] = [
+  {
+    id: 'm1',
+    title: 'Toro Brahman Rojo',
+    price: 12500000,
+    currency: 'COP',
+    location: 'La Dorada, Caldas',
+    description: 'Excelente reproductor Brahman Rojo con registro. Manso, de buena genética y listo para monta.',
+    imageUrl: 'https://images.unsplash.com/photo-1541625602330-2277a4c46182?q=80&w=1770&auto=format&fit=crop',
+    sellerName: 'Ganadería San Jorge',
+    verified: true,
+    stats: { age: '36 Meses', weight: '850 kg', gender: 'Macho', breed: 'Brahman' },
+    type: 'Individual',
+    createdAt: 'Hace 2 horas'
+  },
+  {
+    id: 'm2',
+    title: 'Lote 10 Vacas Holstein',
+    price: 45000000,
+    currency: 'COP',
+    location: 'San Pedro, Antioquia',
+    description: 'Lote de vacas de segundo parto, producción promedio 22L/día. Sanidad al día.',
+    imageUrl: 'https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?q=80&w=2670&auto=format&fit=crop',
+    sellerName: 'Finca La Nube',
+    verified: true,
+    stats: { age: '4 Años (Prom)', weight: '480 kg', gender: 'Hembra', breed: 'Holstein' },
+    type: 'Lote',
+    createdAt: 'Hace 5 horas'
+  },
+  {
+    id: 'm3',
+    title: 'Caballo Cuarto de Milla',
+    price: 18000000,
+    currency: 'COP',
+    location: 'Villavicencio, Meta',
+    description: 'Caballo de trabajo y vaquería, muy noble. Entrenado para manejo de ganado.',
+    imageUrl: 'https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?q=80&w=2071&auto=format&fit=crop',
+    sellerName: 'Hacienda El Palmar',
+    verified: false,
+    stats: { age: '5 Años', weight: '420 kg', gender: 'Macho', breed: 'Cuarto de Milla' },
+    type: 'Individual',
+    createdAt: 'Ayer'
+  }
 ];

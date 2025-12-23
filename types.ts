@@ -75,3 +75,23 @@ export interface AppNotification {
   read: boolean;
   type: 'alert' | 'info' | 'success';
 }
+
+export interface MarketListing {
+  id: string;
+  title: string;
+  price: number;
+  currency: 'COP' | 'USD';
+  location: string;
+  description: string;
+  imageUrl: string;
+  sellerName: string;
+  verified: boolean;
+  stats: {
+    age: string;
+    weight: string;
+    gender: 'Macho' | 'Hembra';
+    breed: string;
+  };
+  type: 'Individual' | 'Lote';
+  createdAt: string;
+}

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
@@ -6,6 +7,8 @@ import AnimalDetail from './pages/AnimalDetail';
 import Transfers from './pages/Transfers';
 import HR from './pages/HR';
 import Market from './pages/Market';
+import ListingDetail from './pages/ListingDetail';
+import CreateListing from './pages/CreateListing';
 import RegisterFarm from './pages/RegisterFarm';
 import RegisterWorker from './pages/RegisterWorker';
 import EditWorker from './pages/EditWorker';
@@ -28,7 +31,12 @@ const App: React.FC = () => {
         <Route path="/" element={<Dashboard />} />
         <Route path="/farms" element={<FarmsList />} />
         <Route path="/inventory" element={<Inventory />} />
+        
+        {/* Marketplace Routes */}
         <Route path="/market" element={<Market />} />
+        <Route path="/market/:id" element={<ListingDetail />} />
+        <Route path="/market/create" element={<CreateListing />} />
+
         <Route path="/animal/:id" element={<AnimalDetail />} />
         <Route path="/genealogy/:id" element={<GenealogyTree />} />
         <Route path="/transfers" element={<Transfers />} />
