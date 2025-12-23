@@ -1,16 +1,31 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Share2, TrendingUp, Cake, Weight, Sparkles, BrainCircuit, Edit2, Plus, Droplets, Stethoscope, MessageSquareText, Dna, Baby, Calendar, AlertCircle, Syringe, Pill, Bell, ChevronRight, BriefcaseMedical, Scan, Scale, TrendingDown, ArrowRight, List, Activity, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Share2, TrendingUp, Cake, Weight, BrainCircuit, Edit2, Plus, Droplets, Syringe, Bell, ChevronRight, BriefcaseMedical, CheckCircle2, List, Calendar, Baby, Dna, Scale, TrendingDown } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, XAxis, Tooltip, YAxis, CartesianGrid } from 'recharts';
+import { allBovines } from '../mockData';
 
 const AnimalDetail: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const [activeTab, setActiveTab] = useState('General');
   
+  // Find the animal based on ID
+  const animal = allBovines.find(b => b.id === id);
+
   // State for Sub-tabs
   const [healthSubTab, setHealthSubTab] = useState<'Vaccination' | 'Treatments'>('Vaccination');
   const [productionType, setProductionType] = useState<'Milk' | 'Weight'>('Milk');
+
+  if (!animal) {
+    return (
+        <div className="min-h-screen bg-background-dark text-white flex items-center justify-center">
+            <div className="text-center">
+                <h2 className="text-xl font-bold">Bovino no encontrado</h2>
+                <button onClick={() => navigate(-1)} className="mt-4 text-primary underline">Volver</button>
+            </div>
+        </div>
+    );
+  }
 
   // Mock Data: Milk Chart
   const milkData = [
@@ -29,20 +44,20 @@ const AnimalDetail: React.FC = () => {
 
   // Mock Data: Weight History
   const weightHistory = [
-      { id: 1, date: '12 Oct, 2023', weight: 450, change: '+12 kg', type: 'gain', event: 'Pesaje Rutina' },
-      { id: 2, date: '12 Sep, 2023', weight: 438, change: '+8 kg', type: 'gain', event: 'Pesaje Mensual' },
-      { id: 3, date: '12 Ago, 2023', weight: 430, change: '-2 kg', type: 'loss', event: 'Post-Enfermedad' },
-      { id: 4, date: '12 Jul, 2023', weight: 432, change: '+15 kg', type: 'gain', event: 'Pesaje Mensual' },
+      { id: 1, date: '12 Oct, 2023', weight: animal.weight, change: '+12 kg', type: 'gain', event: 'Pesaje Rutina' },
+      { id: 2, date: '12 Sep, 2023', weight: animal.weight - 12, change: '+8 kg', type: 'gain', event: 'Pesaje Mensual' },
+      { id: 3, date: '12 Ago, 2023', weight: animal.weight - 20, change: '-2 kg', type: 'loss', event: 'Post-Enfermedad' },
+      { id: 4, date: '12 Jul, 2023', weight: animal.weight - 18, change: '+15 kg', type: 'gain', event: 'Pesaje Mensual' },
   ];
 
   // Mock Data: Weight Chart
   const weightChartData = [
-      { month: 'Ene', val: 380 },
-      { month: 'Feb', val: 395 },
-      { month: 'Mar', val: 410 },
-      { month: 'Abr', val: 422 },
-      { month: 'May', val: 435 },
-      { month: 'Jun', val: 452 },
+      { month: 'Ene', val: animal.weight - 70 },
+      { month: 'Feb', val: animal.weight - 55 },
+      { month: 'Mar', val: animal.weight - 40 },
+      { month: 'Abr', val: animal.weight - 28 },
+      { month: 'May', val: animal.weight - 15 },
+      { month: 'Jun', val: animal.weight },
   ];
 
   const tabs = {
@@ -80,8 +95,8 @@ const AnimalDetail: React.FC = () => {
 
   // Mock Pedigree Data
   const pedigree = {
-      father: { name: 'Thunderbolt', tag: '#9921', breed: 'Brahman', img: 'https://images.unsplash.com/photo-1546445317-29f4545e9d53?q=80&w=2500&auto=format&fit=crop' },
-      mother: { name: 'Bessie', tag: '#1029', breed: 'Brahman', img: 'https://images.unsplash.com/photo-1541625602330-2277a4c46182?auto=format&fit=crop&w=100&h=100' },
+      father: { name: 'Thunderbolt', tag: '#9921', breed: animal.breed, img: 'https://images.unsplash.com/photo-1546445317-29f4545e9d53?q=80&w=2500&auto=format&fit=crop' },
+      mother: { name: 'Bessie', tag: '#1029', breed: animal.breed, img: 'https://images.unsplash.com/photo-1541625602330-2277a4c46182?auto=format&fit=crop&w=100&h=100' },
   };
 
   const navigateToWeight = () => {
@@ -93,7 +108,7 @@ const AnimalDetail: React.FC = () => {
     <div className="bg-background-dark min-h-screen text-white font-display flex flex-col relative">
       {/* Parallax Header Image */}
       <div className="relative w-full h-80 shrink-0">
-        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1546445317-29f4545e9d53?q=80&w=2500&auto=format&fit=crop")' }}></div>
+        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url("${animal.imageUrl}")` }}></div>
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-background-dark"></div>
         
         {/* Nav */}
@@ -120,14 +135,16 @@ const AnimalDetail: React.FC = () => {
           <div className="flex items-end justify-between">
             <div>
               <div className="inline-flex items-center px-2 py-1 rounded bg-primary/20 border border-primary/30 backdrop-blur-sm mb-2">
-                <span className="w-2 h-2 rounded-full bg-primary mr-2 animate-pulse"></span>
-                <span className="text-xs font-bold text-primary tracking-wide uppercase">Activa - Ordeño</span>
+                <span className={`w-2 h-2 rounded-full mr-2 animate-pulse ${animal.status === 'Active' ? 'bg-primary' : 'bg-red-500'}`}></span>
+                <span className="text-xs font-bold text-primary tracking-wide uppercase">
+                    {animal.status === 'Active' ? 'Activo' : animal.status} - {animal.category}
+                </span>
               </div>
-              <h1 className="text-4xl font-bold text-white tracking-tight mb-1">Lola</h1>
-              <p className="text-gray-300 text-lg font-medium">#5783-2 • Holstein Friesian</p>
+              <h1 className="text-4xl font-bold text-white tracking-tight mb-1">{animal.tag}</h1>
+              <p className="text-gray-300 text-lg font-medium">#{animal.tag.split('-')[0]} • {animal.breed}</p>
             </div>
             <div className="flex flex-col items-end">
-              <span className="text-3xl font-bold text-white">450 <span className="text-sm font-normal text-gray-400">kg</span></span>
+              <span className="text-3xl font-bold text-white">{animal.weight} <span className="text-sm font-normal text-gray-400">kg</span></span>
               <span className="text-xs text-primary font-bold flex items-center bg-primary/10 px-1.5 py-0.5 rounded">
                 <TrendingUp size={14} className="mr-1" /> +2.4%
               </span>
@@ -202,63 +219,65 @@ const AnimalDetail: React.FC = () => {
                         <Cake className="text-accent-amber" size={18} />
                         <span className="text-xs text-gray-400">Edad</span>
                     </div>
-                    <p className="text-xl font-bold">3 Años</p>
-                    <p className="text-gray-500 text-[10px]">4 Meses</p>
+                    <p className="text-xl font-bold">{animal.age}</p>
+                    <p className="text-gray-500 text-[10px]">Registrada</p>
                 </div>
                 <div className="bg-surface-dark p-4 rounded-xl border border-white/5 flex flex-col justify-center h-24">
                      <div className="flex items-center gap-2 mb-1">
                         <Weight className="text-primary" size={18} />
                         <span className="text-xs text-gray-400">Último Peso</span>
                     </div>
-                    <p className="text-xl font-bold">450 kg</p>
-                    <p className="text-gray-500 text-[10px]">12 Oct 2023</p>
+                    <p className="text-xl font-bold">{animal.weight} kg</p>
+                    <p className="text-gray-500 text-[10px]">{animal.lastWeighingDate}</p>
                 </div>
             </div>
 
             {/* Milk Summary */}
-            <div>
-                 <div className="flex justify-between items-center px-1 mb-2">
-                     <div>
-                         <h2 className="text-lg font-bold">Curva de Leche</h2>
-                         <p className="text-xs text-gray-400">Periodo Lactancia #2</p>
-                     </div>
-                     <div className="bg-surface-dark border border-white/10 px-2 py-1 rounded text-right">
-                         <span className="block text-[10px] text-gray-400 uppercase">Promedio</span>
-                         <span className="text-primary font-bold text-sm">24.5 L/día</span>
-                     </div>
-                 </div>
-                 <div className="bg-surface-dark rounded-xl border border-white/5 p-4 relative overflow-hidden">
-                     {/* Floating Badge */}
-                     <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white text-black font-bold px-3 py-1 rounded-full shadow-lg z-10 text-sm">
-                         32.5 L
-                     </div>
-                     <div className="h-40 w-full mt-2">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={milkData}>
-                                <defs>
-                                    <linearGradient id="colorMilkGeneral" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#11d421" stopOpacity={0.4}/>
-                                        <stop offset="95%" stopColor="#11d421" stopOpacity={0}/>
-                                    </linearGradient>
-                                </defs>
-                                <Area type="monotone" dataKey="val" stroke="#11d421" strokeWidth={3} fill="url(#colorMilkGeneral)" />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                     </div>
-                     <div className="flex justify-between text-[10px] text-gray-500 mt-2 px-2 border-t border-white/5 pt-2 border-dashed">
-                         <span>Día 0</span>
-                         <span>Día 90</span>
-                         <span>Día 180</span>
-                         <span>Día 270</span>
-                     </div>
-                 </div>
-            </div>
+            {animal.category === 'Cow' && (
+                <div>
+                    <div className="flex justify-between items-center px-1 mb-2">
+                        <div>
+                            <h2 className="text-lg font-bold">Curva de Leche</h2>
+                            <p className="text-xs text-gray-400">Periodo Lactancia #2</p>
+                        </div>
+                        <div className="bg-surface-dark border border-white/10 px-2 py-1 rounded text-right">
+                            <span className="block text-[10px] text-gray-400 uppercase">Promedio</span>
+                            <span className="text-primary font-bold text-sm">24.5 L/día</span>
+                        </div>
+                    </div>
+                    <div className="bg-surface-dark rounded-xl border border-white/5 p-4 relative overflow-hidden">
+                        {/* Floating Badge */}
+                        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white text-black font-bold px-3 py-1 rounded-full shadow-lg z-10 text-sm">
+                            32.5 L
+                        </div>
+                        <div className="h-40 w-full mt-2">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={milkData}>
+                                    <defs>
+                                        <linearGradient id="colorMilkGeneral" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#11d421" stopOpacity={0.4}/>
+                                            <stop offset="95%" stopColor="#11d421" stopOpacity={0}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <Area type="monotone" dataKey="val" stroke="#11d421" strokeWidth={3} fill="url(#colorMilkGeneral)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                        <div className="flex justify-between text-[10px] text-gray-500 mt-2 px-2 border-t border-white/5 pt-2 border-dashed">
+                            <span>Día 0</span>
+                            <span>Día 90</span>
+                            <span>Día 180</span>
+                            <span>Día 270</span>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Weight Control Summary */}
             <div>
                 <div className="flex items-center justify-between px-1 mb-2">
                     <h2 className="text-lg font-bold">Control de Peso</h2>
-                    <span className="text-[10px] border border-white/20 px-1.5 py-0.5 rounded text-gray-400 uppercase">Bovino</span>
+                    <span className="text-[10px] border border-white/20 px-1.5 py-0.5 rounded text-gray-400 uppercase">{animal.category}</span>
                 </div>
 
                 <div className="bg-surface-dark rounded-xl border border-white/5 overflow-hidden">
@@ -281,7 +300,7 @@ const AnimalDetail: React.FC = () => {
                         <div className="flex justify-between items-start mb-4">
                             <div>
                                 <div className="flex items-baseline gap-1">
-                                    <h3 className="text-3xl font-bold text-white">452</h3>
+                                    <h3 className="text-3xl font-bold text-white">{animal.weight}</h3>
                                     <span className="text-sm text-gray-400">kg</span>
                                 </div>
                                 <span className="text-[10px] text-primary bg-primary/10 px-1.5 py-0.5 rounded font-bold">+12kg vs inicio</span>
@@ -365,42 +384,44 @@ const AnimalDetail: React.FC = () => {
                 </div>
             </div>
 
-            {/* Birth Records Summary */}
-            <div>
-                <h2 className="text-lg font-bold mb-3 px-1">Registros de Partos</h2>
-                
-                {/* Interval Highlight */}
-                <div className="bg-[#2a2410] border border-[#FFB300]/20 rounded-xl p-4 flex items-center justify-between mb-3">
-                    <div>
-                        <p className="text-xs text-[#FFB300] font-bold uppercase tracking-wider">Intervalo entre partos</p>
-                        <p className="text-[10px] text-gray-400">Último intervalo registrado</p>
-                    </div>
-                    <span className="text-2xl font-bold text-[#FFB300]">385 <span className="text-xs font-normal text-gray-400">días</span></span>
-                </div>
-
-                <div className="space-y-2">
-                    {calves.map((calf, index) => (
-                        <div key={index} className="bg-surface-dark border border-white/5 rounded-xl p-3 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="bg-white/5 w-10 h-10 rounded-lg flex items-center justify-center font-bold text-gray-400 text-lg">
-                                    #{calves.length - index}
-                                </div>
-                                <div>
-                                    <h4 className="text-sm font-bold text-white">Cría: {calf.name} ({calf.id})</h4>
-                                    <p className="text-[10px] text-gray-400">Nac: {calf.date} • {calf.status}</p>
-                                </div>
-                            </div>
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                                calf.sex === 'Female' 
-                                ? 'bg-pink-500/10 text-pink-400 border-pink-500/20' 
-                                : 'bg-green-500/10 text-green-400 border-green-500/20'
-                            }`}>
-                                {calf.sex === 'Female' ? 'Hembra' : 'Macho'}
-                            </span>
+            {/* Birth Records Summary - Only for Cows/Heifers */}
+            {(animal.category === 'Cow' || animal.category === 'Heifer') && (
+                <div>
+                    <h2 className="text-lg font-bold mb-3 px-1">Registros de Partos</h2>
+                    
+                    {/* Interval Highlight */}
+                    <div className="bg-[#2a2410] border border-[#FFB300]/20 rounded-xl p-4 flex items-center justify-between mb-3">
+                        <div>
+                            <p className="text-xs text-[#FFB300] font-bold uppercase tracking-wider">Intervalo entre partos</p>
+                            <p className="text-[10px] text-gray-400">Último intervalo registrado</p>
                         </div>
-                    ))}
+                        <span className="text-2xl font-bold text-[#FFB300]">385 <span className="text-xs font-normal text-gray-400">días</span></span>
+                    </div>
+
+                    <div className="space-y-2">
+                        {calves.map((calf, index) => (
+                            <div key={index} className="bg-surface-dark border border-white/5 rounded-xl p-3 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-white/5 w-10 h-10 rounded-lg flex items-center justify-center font-bold text-gray-400 text-lg">
+                                        #{calves.length - index}
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-white">Cría: {calf.name} ({calf.id})</h4>
+                                        <p className="text-[10px] text-gray-400">Nac: {calf.date} • {calf.status}</p>
+                                    </div>
+                                </div>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                                    calf.sex === 'Female' 
+                                    ? 'bg-pink-500/10 text-pink-400 border-pink-500/20' 
+                                    : 'bg-green-500/10 text-green-400 border-green-500/20'
+                                }`}>
+                                    {calf.sex === 'Female' ? 'Hembra' : 'Macho'}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Bottom Spacer */}
             <div className="h-4"></div>
@@ -519,7 +540,7 @@ const AnimalDetail: React.FC = () => {
                             <div>
                                 <p className="text-sm text-gray-400 font-bold uppercase tracking-wide mb-1">Peso Actual</p>
                                 <div className="flex items-baseline gap-1">
-                                    <h2 className="text-5xl font-extrabold text-white">450</h2>
+                                    <h2 className="text-5xl font-extrabold text-white">{animal.weight}</h2>
                                     <span className="text-xl text-gray-500 font-medium">kg</span>
                                 </div>
                             </div>

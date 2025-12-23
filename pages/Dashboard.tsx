@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, MoreHorizontal, Droplets, TrendingUp, Users, Plus, ArrowRight, Gauge, Bell, AlertTriangle, CheckCircle2, Info, X } from 'lucide-react';
+import { MapPin, MoreHorizontal, Droplets, TrendingUp, Users, Plus, ArrowRight, Gauge, Bell, AlertTriangle, CheckCircle2, Info, X, BrainCircuit } from 'lucide-react';
 import { BottomNav } from '../components/BottomNav';
 import { farmsData, allBovines, mockNotifications } from '../mockData';
 
@@ -263,6 +263,17 @@ const Dashboard: React.FC = () => {
               <div className="text-left flex-1">
                 <h3 className="font-bold text-white">Iniciar Traslado</h3>
                 <p className="text-xs text-gray-500">Mover ganado entre fincas</p>
+              </div>
+              <ArrowRight size={20} className="text-gray-400" />
+            </button>
+
+            <button onClick={() => navigate('/veterinary-ai/general')} className="flex items-center gap-4 bg-surface-dark p-4 rounded-xl border border-white/5 active:scale-[0.98] transition-all">
+              <div className="bg-indigo-500/10 text-indigo-400 p-2 rounded-lg">
+                <BrainCircuit size={24} />
+              </div>
+              <div className="text-left flex-1">
+                <h3 className="font-bold text-white">Consultar IA Veterinaria</h3>
+                <p className="text-xs text-gray-500">Preguntas rápidas y diagnóstico</p>
               </div>
               <ArrowRight size={20} className="text-gray-400" />
             </button>
