@@ -3,17 +3,28 @@ import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Calendar, DollarSign, User, Tag, ChevronDown, 
   ShieldCheck, Camera, Image, ArrowRight, Timer, Users, 
-  RefreshCw, MapPin, Info, Search, CheckCircle2, Circle
+  RefreshCw, MapPin, Info, Search, CheckCircle2, Circle, 
+  History, FileText, Plus, Filter, ArrowUpRight, ArrowRightLeft
 } from 'lucide-react';
 
 const Transfers: React.FC = () => {
   const navigate = useNavigate();
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  // Step 0: History, 1: Scope, 2: Selection, 3: Confirmation
+  const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
   
-  // State
+  // State for Wizard
   const [scope, setScope] = useState<'Individual' | 'Lote'>('Individual');
   const [movementType, setMovementType] = useState<'Transferencia' | 'Venta'>('Venta');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [historyFilter, setHistoryFilter] = useState<'All' | 'Sale' | 'Transfer'>('All');
+
+  // Mock Data for History
+  const historyData = [
+      { id: 'TR-1029', date: '25 Oct 2023', type: 'Sale', quantity: 5, detail: 'Comprador: Carnes S.A.', amount: '$ 12.5M', status: 'Completed' },
+      { id: 'TR-1028', date: '20 Oct 2023', type: 'Transfer', quantity: 12, detail: 'A: Finca El Roble', status: 'Completed' },
+      { id: 'TR-1027', date: '15 Oct 2023', type: 'Sale', quantity: 1, detail: 'Descarte: Matadero Municipal', amount: '$ 2.1M', status: 'Completed' },
+      { id: 'TR-1026', date: '10 Sep 2023', type: 'Transfer', quantity: 45, detail: 'A: Lote Engorde 2', status: 'Completed' },
+  ];
 
   // Mock Data for Selection
   const availableAnimals = [
@@ -34,13 +45,16 @@ const Transfers: React.FC = () => {
     }
   };
 
+  const handleFinalConfirm = () => {
+      // Logic to save transfer would go here
+      setStep(0); // Return to history
+      setSelectedIds([]);
+  }
+
   const toggleSelection = (id: string) => {
     if (scope === 'Individual') {
-      // If individual, clicking toggles solely that one (radio behavior essentially, but deselectable)
-      // Or simply replace selection
       setSelectedIds([id]);
     } else {
-      // Batch
       if (selectedIds.includes(id)) {
         setSelectedIds(selectedIds.filter(i => i !== id));
       } else {
@@ -51,6 +65,115 @@ const Transfers: React.FC = () => {
 
   const isSelected = (id: string) => selectedIds.includes(id);
 
+  // --- STEP 0: HISTORY VIEW (NEW) ---
+  if (step === 0) {
+      const filteredHistory = historyData.filter(item => {
+          if (historyFilter === 'All') return true;
+          return item.type === historyFilter;
+      });
+
+      return (
+        <div className="bg-background-dark text-white font-display min-h-screen flex flex-col relative">
+            <header className="p-4 pt-8 flex items-center justify-between sticky top-0 bg-background-dark/95 backdrop-blur-md z-20 border-b border-white/5">
+                <div className="flex items-center gap-4">
+                    <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/10">
+                        <ArrowLeft size={24} />
+                    </button>
+                    <div>
+                        <h1 className="text-xl font-bold leading-none">Traslados</h1>
+                        <p className="text-xs text-gray-400 mt-1">Historial de Movimientos</p>
+                    </div>
+                </div>
+                <button className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/10 text-gray-400">
+                    <Search size={24} />
+                </button>
+            </header>
+
+            {/* Filter Tabs */}
+            <div className="p-4 pb-2">
+                <div className="flex bg-surface-dark p-1 rounded-xl border border-white/10">
+                    <button 
+                        onClick={() => setHistoryFilter('All')}
+                        className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${historyFilter === 'All' ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                    >
+                        Todos
+                    </button>
+                    <button 
+                        onClick={() => setHistoryFilter('Sale')}
+                        className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${historyFilter === 'Sale' ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                    >
+                        Ventas
+                    </button>
+                    <button 
+                        onClick={() => setHistoryFilter('Transfer')}
+                        className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${historyFilter === 'Transfer' ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                    >
+                        Internos
+                    </button>
+                </div>
+            </div>
+
+            <main className="flex-1 overflow-y-auto p-4 pb-24 space-y-3">
+                {filteredHistory.map((item) => (
+                    <div key={item.id} className="bg-surface-dark border border-white/5 rounded-2xl p-4 flex flex-col gap-3 hover:border-white/10 transition-colors cursor-pointer active:scale-[0.99]">
+                        <div className="flex justify-between items-start">
+                            <div className="flex gap-3">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                    item.type === 'Sale' 
+                                    ? 'bg-green-500/20 text-green-500' 
+                                    : 'bg-blue-500/20 text-blue-500'
+                                }`}>
+                                    {item.type === 'Sale' ? <DollarSign size={20} /> : <ArrowRightLeft size={20} />}
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="font-bold text-white text-base">
+                                            {item.type === 'Sale' ? 'Venta de Ganado' : 'Traslado Interno'}
+                                        </h3>
+                                        <span className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded text-gray-300 font-mono">{item.id}</span>
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+                                        <Calendar size={12} /> {item.date}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex flex-col items-end">
+                                <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${
+                                    item.status === 'Completed' 
+                                    ? 'bg-green-500/10 text-green-500 border-green-500/20' 
+                                    : 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
+                                }`}>
+                                    {item.status === 'Completed' ? 'Completado' : 'Pendiente'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="h-px bg-white/5 w-full"></div>
+
+                        <div className="flex justify-between items-end">
+                            <div className="flex flex-col gap-1">
+                                <p className="text-sm font-medium text-gray-200">{item.detail}</p>
+                                <p className="text-xs text-gray-500">{item.quantity} Animales involucrados</p>
+                            </div>
+                            {item.amount && (
+                                <span className="text-lg font-bold text-white">{item.amount}</span>
+                            )}
+                        </div>
+                    </div>
+                ))}
+            </main>
+
+            {/* FAB to Start Wizard */}
+            <button 
+                onClick={() => setStep(1)}
+                className="fixed bottom-6 right-6 w-14 h-14 bg-primary hover:bg-primary-dark text-black rounded-full shadow-[0_0_20px_rgba(17,212,33,0.4)] flex items-center justify-center transition-transform hover:scale-105 active:scale-95 z-30"
+            >
+                <Plus size={28} />
+            </button>
+        </div>
+      );
+  }
+
   // --- STEP 1: INITIAL SELECTION ---
   if (step === 1) {
     return (
@@ -58,12 +181,12 @@ const Transfers: React.FC = () => {
         {/* Header Step 1 */}
         <header className="p-4 flex items-center relative justify-center border-b border-white/5">
           <button 
-            onClick={() => navigate(-1)}
+            onClick={() => setStep(0)} // Go back to History
             className="absolute left-4 p-2 rounded-full hover:bg-white/10 transition-colors"
           >
             <ArrowLeft size={24} />
           </button>
-          <h1 className="text-lg font-bold">Iniciar Traslado</h1>
+          <h1 className="text-lg font-bold">Nuevo Movimiento</h1>
         </header>
 
         <main className="flex-1 overflow-y-auto p-5 pb-32 space-y-8">
@@ -270,7 +393,7 @@ const Transfers: React.FC = () => {
     );
   }
 
-  // --- STEP 3: EXECUTION (Matches Provided HTML) ---
+  // --- STEP 3: EXECUTION ---
   const selectedCount = selectedIds.length;
   // Get first selected animal for display if individual
   const firstSelected = availableAnimals.find(a => a.id === selectedIds[0]);
@@ -288,7 +411,7 @@ const Transfers: React.FC = () => {
           </button>
           <div className="flex items-center justify-end">
             <button 
-              onClick={() => navigate(-1)}
+              onClick={() => setStep(0)} // Cancel to History
               className="text-[#556b56] dark:text-[#9db99f] text-base font-bold leading-normal tracking-[0.015em] shrink-0 active:text-[#11d421] transition-colors"
             >
               Cancelar
@@ -499,7 +622,10 @@ const Transfers: React.FC = () => {
 
       {/* Sticky Bottom Button */}
       <div className="fixed bottom-0 left-0 right-0 p-5 bg-[#f6f8f6]/90 dark:bg-[#102212]/90 backdrop-blur-md border-t border-[#e5e7eb] dark:border-[#2a3c2e] z-20">
-        <button className="w-full h-14 rounded-xl bg-[#11d421] hover:bg-[#0ebf1d] active:scale-[0.98] transition-all shadow-[0_4px_14px_0_rgba(17,212,33,0.39)] flex items-center justify-center gap-2 group">
+        <button 
+          onClick={handleFinalConfirm}
+          className="w-full h-14 rounded-xl bg-[#11d421] hover:bg-[#0ebf1d] active:scale-[0.98] transition-all shadow-[0_4px_14px_0_rgba(17,212,33,0.39)] flex items-center justify-center gap-2 group"
+        >
           <span className="text-[#051c07] text-lg font-bold tracking-wide">Confirmar Traslado</span>
           <ArrowRight className="text-[#051c07] group-hover:translate-x-1 transition-transform" size={24} />
         </button>
