@@ -3,9 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { 
     ArrowLeft, Send, Camera, Image as ImageIcon, X, 
     BrainCircuit, Sparkles, Video, Mic, Volume2, 
-    Zap, Globe, Search, Play, FileVideo 
+    Zap, Globe, Search, Play, FileVideo, MapPin, PhoneOff, MicOff 
 } from 'lucide-react';
-import { consultVeterinarianAdvanced, playAudioResponse, AIQueryMode } from '../services/geminiService';
+import { consultVeterinarianAdvanced, playAudioResponse, AIQueryMode, getLiveClient } from '../services/geminiService';
+import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
 
 interface Message {
   id: string;
@@ -14,8 +15,7 @@ interface Message {
   media?: string; // Base64 for Image or Video
   mediaType?: 'image' | 'video';
   timestamp: string;
-  sources?: { uri: string; title: string }[];
-  isReasoning?: boolean; // To show "Thinking..." state
+  sources?: { uri: string; title: string; type: 'web' | 'map' }[];
 }
 
 const VeterinaryAI: React.FC = () => {
@@ -23,26 +23,36 @@ const VeterinaryAI: React.FC = () => {
   const { id } = useParams();
   const scrollRef = useRef<HTMLDivElement>(null);
   
-  // State
+  // Chat State
   const [input, setInput] = useState('');
   const [mode, setMode] = useState<AIQueryMode>('fast');
-  
-  // Media Upload State
-  const [selectedMedia, setSelectedMedia] = useState<string | null>(null);
-  const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
-  const [mimeType, setMimeType] = useState<string>('');
-
   const [loading, setLoading] = useState(false);
-  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
-
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
       role: 'ai',
-      text: `Hola, soy tu Asistente Veterinario Avanzado. 🩺\n\nAnalizo **imágenes**, **videos** y datos complejos.\n\nSelecciona un modo abajo: \n⚡ **Rápido**: Para dudas simples.\n🧠 **Profundo**: Para diagnósticos complejos (Thinking Mode).\n🌐 **Búsqueda**: Para datos actualizados de la web.`,
+      text: `Hola, soy tu Asistente Veterinario Avanzado. 🩺\n\nAnalizo **imágenes**, **videos** y datos complejos.\n\nSelecciona un modo abajo: \n⚡ **Rápido**: Para dudas simples.\n🧠 **Profundo**: Para diagnósticos complejos (Thinking Mode).\n📍 **Mapas**: Para buscar clínicas o proveedores.\n🎤 **En Vivo**: Conversación de voz real.`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
+
+  // Media Upload State
+  const [selectedMedia, setSelectedMedia] = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
+  const [mimeType, setMimeType] = useState<string>('');
+  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
+
+  // --- LIVE API STATE ---
+  const [isLiveActive, setIsLiveActive] = useState(false);
+  const [isMicMuted, setIsMicMuted] = useState(false);
+  const [liveStatus, setLiveStatus] = useState('Conectando...');
+  const [liveVolume, setLiveVolume] = useState(0); // Visualizer
+  
+  // Refs for Live API to avoid stale closures
+  const liveSessionRef = useRef<any>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const inputSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const processorRef = useRef<ScriptProcessorNode | null>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -50,7 +60,14 @@ const VeterinaryAI: React.FC = () => {
     }
   }, [messages, loading]);
 
-  // --- HANDLERS ---
+  // Cleanup Live Session on Unmount
+  useEffect(() => {
+      return () => {
+          stopLiveSession();
+      };
+  }, []);
+
+  // --- CHAT HANDLERS ---
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'video') => {
     const file = e.target.files?.[0];
@@ -111,15 +128,191 @@ const VeterinaryAI: React.FC = () => {
   };
 
   const handleTTS = async (text: string, msgId: string) => {
-      if (playingAudioId === msgId) return; // Prevent double click
+      if (playingAudioId === msgId) return;
       setPlayingAudioId(msgId);
       await playAudioResponse(text);
       setPlayingAudioId(null);
   };
 
-  return (
-    <div className="flex flex-col h-screen bg-background-dark text-white font-display">
+  // --- LIVE API LOGIC ---
+
+  const startLiveSession = async () => {
+      setIsLiveActive(true);
+      setLiveStatus('Conectando con Gemini Live...');
       
+      try {
+        const ai = getLiveClient();
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        const audioCtx = new AudioContextClass({sampleRate: 16000}); // Input rate
+        const outAudioCtx = new AudioContextClass({sampleRate: 24000}); // Output rate
+        audioContextRef.current = audioCtx;
+
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        // Helper functions for Encoding/Decoding
+        const encode = (bytes: Uint8Array) => {
+            let binary = '';
+            const len = bytes.byteLength;
+            for (let i = 0; i < len; i++) { binary += String.fromCharCode(bytes[i]); }
+            return btoa(binary);
+        };
+        
+        const decode = (base64: string) => {
+            const binaryString = atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) { bytes[i] = binaryString.charCodeAt(i); }
+            return bytes;
+        };
+
+        const createBlob = (data: Float32Array) => {
+             const l = data.length;
+             const int16 = new Int16Array(l);
+             for (let i = 0; i < l; i++) { int16[i] = data[i] * 32768; }
+             return {
+                 data: encode(new Uint8Array(int16.buffer)),
+                 mimeType: 'audio/pcm;rate=16000',
+             };
+        };
+
+        // Output Audio Scheduling
+        let nextStartTime = 0;
+        const outputNode = outAudioCtx.createGain();
+        outputNode.connect(outAudioCtx.destination);
+
+        const sessionPromise = ai.live.connect({
+            model: 'gemini-2.5-flash-native-audio-preview-09-2025',
+            callbacks: {
+                onopen: () => {
+                    setLiveStatus('En línea - Escuchando...');
+                    
+                    // Setup Audio Input Stream
+                    const source = audioCtx.createMediaStreamSource(stream);
+                    const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+                    
+                    processor.onaudioprocess = (e) => {
+                        const inputData = e.inputBuffer.getChannelData(0);
+                        // Visualizer Logic
+                        let sum = 0;
+                        for(let i=0; i<inputData.length; i++) sum += inputData[i] * inputData[i];
+                        setLiveVolume(Math.sqrt(sum / inputData.length) * 100);
+
+                        if (isMicMuted) return; // Mute logic check inside loop if needed or just disconnect
+
+                        const pcmBlob = createBlob(inputData);
+                        sessionPromise.then(session => session.sendRealtimeInput({ media: pcmBlob }));
+                    };
+
+                    source.connect(processor);
+                    processor.connect(audioCtx.destination);
+                    
+                    inputSourceRef.current = source;
+                    processorRef.current = processor;
+                },
+                onmessage: async (message: LiveServerMessage) => {
+                    const base64Audio = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
+                    if (base64Audio) {
+                        nextStartTime = Math.max(nextStartTime, outAudioCtx.currentTime);
+                        
+                        const audioData = decode(base64Audio);
+                        // Manual decoding for raw PCM
+                        const dataInt16 = new Int16Array(audioData.buffer);
+                        const frameCount = dataInt16.length;
+                        const buffer = outAudioCtx.createBuffer(1, frameCount, 24000);
+                        const channelData = buffer.getChannelData(0);
+                        for (let i = 0; i < frameCount; i++) {
+                             channelData[i] = dataInt16[i] / 32768.0;
+                        }
+
+                        const source = outAudioCtx.createBufferSource();
+                        source.buffer = buffer;
+                        source.connect(outputNode);
+                        source.start(nextStartTime);
+                        nextStartTime += buffer.duration;
+                    }
+                },
+                onclose: () => {
+                    setLiveStatus('Desconectado');
+                    stopLiveSession();
+                },
+                onerror: (e) => {
+                    console.error(e);
+                    setLiveStatus('Error de conexión');
+                }
+            },
+            config: {
+                responseModalities: [Modality.AUDIO],
+                speechConfig: {
+                    voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
+                },
+                systemInstruction: "Eres un asistente veterinario experto. Responde de forma hablada, concisa y profesional."
+            }
+        });
+
+        liveSessionRef.current = sessionPromise;
+
+      } catch (error) {
+          console.error("Live API Error", error);
+          setLiveStatus('Error al iniciar audio');
+      }
+  };
+
+  const stopLiveSession = () => {
+      // Clean up Audio Contexts and Tracks
+      if (inputSourceRef.current) inputSourceRef.current.disconnect();
+      if (processorRef.current) processorRef.current.disconnect();
+      if (audioContextRef.current) audioContextRef.current.close();
+      
+      // Close Gemini Session (No direct close method on promise, relying on page unmount or flag)
+      // Ideally we would send a close signal if the SDK supported it explicitly on the session object
+      
+      setIsLiveActive(false);
+      setLiveVolume(0);
+  };
+
+
+  return (
+    <div className="flex flex-col h-screen bg-background-dark text-white font-display relative overflow-hidden">
+      
+      {/* --- LIVE OVERLAY --- */}
+      {isLiveActive && (
+          <div className="absolute inset-0 z-50 bg-background-dark flex flex-col items-center justify-between py-12 animate-in slide-in-from-bottom-full duration-500">
+              <div className="flex flex-col items-center gap-4">
+                  <div className="w-24 h-24 rounded-full bg-red-500/10 flex items-center justify-center animate-pulse">
+                      <Mic size={40} className="text-red-500" />
+                  </div>
+                  <h2 className="text-2xl font-bold">Modo En Vivo</h2>
+                  <p className="text-gray-400 font-mono">{liveStatus}</p>
+              </div>
+
+              {/* Audio Visualizer Mock */}
+              <div className="flex items-center gap-2 h-24">
+                  {[...Array(5)].map((_, i) => (
+                      <div 
+                        key={i} 
+                        className="w-3 bg-white/20 rounded-full transition-all duration-75"
+                        style={{ height: `${20 + (Math.random() * liveVolume * 2)}px` }}
+                      ></div>
+                  ))}
+              </div>
+
+              <div className="flex items-center gap-6">
+                  <button 
+                    onClick={() => setIsMicMuted(!isMicMuted)}
+                    className={`p-6 rounded-full ${isMicMuted ? 'bg-white text-black' : 'bg-surface-dark border border-white/10 text-white'}`}
+                  >
+                      {isMicMuted ? <MicOff size={32} /> : <Mic size={32} />}
+                  </button>
+                  <button 
+                    onClick={stopLiveSession}
+                    className="p-6 rounded-full bg-red-500 text-white shadow-[0_0_30px_rgba(239,68,68,0.4)] hover:scale-105 transition-transform"
+                  >
+                      <PhoneOff size={32} />
+                  </button>
+              </div>
+          </div>
+      )}
+
       {/* Header */}
       <header className="flex-none p-4 pt-8 bg-surface-dark/95 backdrop-blur-md border-b border-white/5 flex items-center justify-between z-20">
         <div className="flex items-center gap-3">
@@ -136,7 +329,10 @@ const VeterinaryAI: React.FC = () => {
         </div>
         
         {/* Live API Trigger */}
-        <button className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-full text-xs font-bold animate-pulse">
+        <button 
+            onClick={startLiveSession}
+            className="flex items-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-full text-xs font-bold animate-pulse active:scale-95 transition-transform"
+        >
             <Mic size={14} />
             <span>EN VIVO</span>
         </button>
@@ -148,19 +344,25 @@ const VeterinaryAI: React.FC = () => {
             onClick={() => setMode('fast')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all border ${mode === 'fast' ? 'bg-yellow-400 text-black border-yellow-400' : 'bg-white/5 border-white/5 text-gray-400'}`}
           >
-              <Zap size={14} fill={mode==='fast' ? "currentColor" : "none"} /> Rápido (Flash Lite)
+              <Zap size={14} fill={mode==='fast' ? "currentColor" : "none"} /> Rápido
           </button>
           <button 
             onClick={() => setMode('deep')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all border ${mode === 'deep' ? 'bg-purple-500 text-white border-purple-500' : 'bg-white/5 border-white/5 text-gray-400'}`}
           >
-              <BrainCircuit size={14} /> Pensamiento Profundo (Pro)
+              <BrainCircuit size={14} /> Pensamiento
           </button>
           <button 
             onClick={() => setMode('search')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all border ${mode === 'search' ? 'bg-blue-500 text-white border-blue-500' : 'bg-white/5 border-white/5 text-gray-400'}`}
           >
-              <Globe size={14} /> Búsqueda Google
+              <Globe size={14} /> Búsqueda
+          </button>
+          <button 
+            onClick={() => setMode('maps')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all border ${mode === 'maps' ? 'bg-green-500 text-white border-green-500' : 'bg-white/5 border-white/5 text-gray-400'}`}
+          >
+              <MapPin size={14} /> Localizar
           </button>
       </div>
 
@@ -204,8 +406,9 @@ const VeterinaryAI: React.FC = () => {
                         <p className="text-[10px] font-bold text-gray-400 mb-1 flex items-center gap-1"><Search size={10} /> Fuentes:</p>
                         <div className="flex flex-wrap gap-2">
                             {msg.sources.map((source, idx) => (
-                                <a key={idx} href={source.uri} target="_blank" rel="noreferrer" className="text-[10px] text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded hover:underline truncate max-w-[150px]">
-                                    {source.title || source.uri}
+                                <a key={idx} href={source.uri} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-[10px] text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded hover:underline truncate max-w-[150px]">
+                                    {source.type === 'map' ? <MapPin size={10} /> : <Globe size={10} />}
+                                    {source.title || (source.type === 'map' ? 'Ver Mapa' : 'Enlace')}
                                 </a>
                             ))}
                         </div>
@@ -288,7 +491,7 @@ const VeterinaryAI: React.FC = () => {
                 <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder={mode === 'deep' ? "Describe el caso complejo..." : "Escribe tu consulta..."}
+                    placeholder={mode === 'deep' ? "Describe el caso complejo..." : mode === 'maps' ? "Busca clínicas cercanas..." : "Escribe tu consulta..."}
                     className="w-full h-24 bg-surface-dark border border-white/10 rounded-2xl p-4 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-gray-600 resize-none"
                 />
             </div>

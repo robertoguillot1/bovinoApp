@@ -3,7 +3,7 @@ import { GoogleGenAI, Modality } from "@google/genai";
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
 
 // --- TYPES ---
-export type AIQueryMode = 'fast' | 'deep' | 'search';
+export type AIQueryMode = 'fast' | 'deep' | 'search' | 'maps';
 
 interface MultimodalInput {
   text: string;
@@ -64,8 +64,8 @@ export const consultVeterinarianAdvanced = async (
     // 1. SELECT MODEL BASED ON MODE
     switch (mode) {
         case 'fast':
-            // Fast responses using Flash Lite
-            modelName = 'gemini-2.5-flash-lite-latest'; // "gemini-flash-lite-latest" alias mapped manually for safety
+            // Fast responses using Flash Lite (Corrected Alias)
+            modelName = 'gemini-flash-lite-latest'; 
             break;
         
         case 'deep':
@@ -86,6 +86,15 @@ export const consultVeterinarianAdvanced = async (
             };
             systemInstruction += " Busca información actualizada sobre brotes de enfermedades recientes, precios de medicamentos o normativas sanitarias vigentes.";
             break;
+
+        case 'maps':
+            // Grounding with Google Maps
+            modelName = 'gemini-2.5-flash';
+            config = {
+                tools: [{ googleMaps: {} }]
+            };
+            systemInstruction += " Ayuda a localizar clínicas veterinarias, proveedores de insumos o mataderos cercanos. Proporciona direcciones precisas.";
+            break;
     }
 
     // 2. HANDLE MULTIMODAL INPUT (Video/Image overrides to Pro if needed, or specific vision models)
@@ -93,7 +102,6 @@ export const consultVeterinarianAdvanced = async (
 
     if (input.image) {
         // If image is present and we are NOT in deep thinking mode, use Pro Vision or keep current if supports it.
-        // For best image analysis as per prompt:
         if (mode !== 'deep') modelName = 'gemini-3-pro-preview'; 
         
         const cleanBase64 = input.image.split(',')[1] || input.image;
@@ -129,31 +137,31 @@ export const consultVeterinarianAdvanced = async (
     // 4. PROCESS RESPONSE
     const text = response.text || "No se pudo generar una respuesta.";
     
-    // Extract grounding metadata if available (for Search mode)
+    // Extract grounding metadata if available (for Search & Maps)
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
-    const sources = groundingChunks?.map((chunk: any) => ({
-        uri: chunk.web?.uri,
-        title: chunk.web?.title
-    })).filter((s: any) => s.uri);
+    const sources = groundingChunks?.map((chunk: any) => {
+        if (chunk.web) {
+            return { uri: chunk.web.uri, title: chunk.web.title, type: 'web' };
+        } else if (chunk.maps) {
+            return { uri: chunk.maps.googleMapsUri, title: chunk.maps.placeId, type: 'map' }; // Using Google Maps URI provided by API
+        }
+        return null;
+    }).filter((s: any) => s?.uri);
 
     return { text, sources };
 
   } catch (error) {
     console.error("Gemini Advanced Vet Error:", error);
-    return { text: "Ocurrió un error al conectar con el Asistente Veterinario. Por favor verifica tu conexión." };
+    return { text: "Ocurrió un error al conectar con el Asistente Veterinario. Por favor verifica tu conexión y la configuración de la API Key." };
   }
 };
 
-// --- LEGACY FUNCTIONS (Kept for compatibility if used elsewhere) ---
-export const analyzeHealthStatus = async (symptoms: string, breed: string): Promise<string> => {
-    // ... implementation ...
-    return "Consulte la nueva interfaz de IA.";
-};
-
-export const suggestHerdOptimization = async (farmData: string): Promise<string> => {
-    // ... implementation ...
-    return "Consulte la nueva interfaz de IA.";
+// --- LIVE API HELPER (For Component Use) ---
+export const getLiveClient = () => {
+    return ai;
 }
+
+// --- LEGACY FUNCTIONS (Kept for compatibility) ---
 export const consultVeterinarian = async (message: string, base64Image?: string): Promise<string> => {
     const res = await consultVeterinarianAdvanced({ text: message, image: base64Image }, 'fast');
     return res.text;
