@@ -15,6 +15,20 @@ const Dashboard: React.FC = () => {
   const [notifications, setNotifications] = useState(mockNotifications);
   const [showNotifications, setShowNotifications] = useState(false);
 
+  // User Data State
+  const [user, setUser] = useState({
+      name: 'Usuario',
+      imageUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&h=100'
+  });
+
+  useEffect(() => {
+      const savedProfile = localStorage.getItem('user_profile');
+      if (savedProfile) {
+          const profile = JSON.parse(savedProfile);
+          setUser({ name: profile.name, imageUrl: profile.imageUrl });
+      }
+  }, []);
+
   // Load Farms (from LocalStorage or Mock)
   const [farms] = useState(() => {
       const savedFarms = localStorage.getItem('bovine_farms');
@@ -64,16 +78,16 @@ const Dashboard: React.FC = () => {
       {/* Header */}
       <header className="flex items-center justify-between px-5 pt-12 pb-4 sticky top-0 z-20 bg-background-dark/95 backdrop-blur-sm">
         <div className="flex items-center gap-3">
-          <div className="relative cursor-pointer" onClick={() => navigate('/hr')}>
+          <div className="relative cursor-pointer" onClick={() => navigate('/profile')}>
             <img 
-              src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&h=100" 
+              src={user.imageUrl} 
               className="w-10 h-10 rounded-full ring-2 ring-surface-dark object-cover" 
               alt="Profile" 
             />
             <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary rounded-full border-2 border-background-dark"></div>
           </div>
           <div>
-            <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Bienvenido de nuevo</p>
+            <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Bienvenido, {user.name.split(' ')[0]}</p>
             <h1 className="text-xl font-extrabold leading-none tracking-tight">Centro de Control</h1>
           </div>
         </div>

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
@@ -31,8 +31,28 @@ import RegisterCheeseSale from './pages/RegisterCheeseSale'; // New Import
 import CheeseBatchDetail from './pages/CheeseBatchDetail'; // New Import
 import FarmsList from './pages/FarmsList';
 import Settings from './pages/Settings';
+import UserProfile from './pages/UserProfile'; // New Import
 
 const App: React.FC = () => {
+  
+  // Apply preferences on startup
+  useEffect(() => {
+    // 1. Text Size
+    const savedSize = localStorage.getItem('app_text_size');
+    if (savedSize) {
+      document.documentElement.style.fontSize = `${savedSize}px`;
+    }
+
+    // 2. Theme (Dark/Light)
+    const savedTheme = localStorage.getItem('app_theme');
+    // Default to dark if not set (savedTheme is null) or if explicitly 'dark'
+    if (savedTheme === 'light') {
+        document.documentElement.classList.remove('dark');
+    } else {
+        document.documentElement.classList.add('dark');
+    }
+  }, []);
+
   return (
     <HashRouter>
       <Routes>
@@ -69,6 +89,7 @@ const App: React.FC = () => {
         <Route path="/create-lot" element={<CreateLot />} />
         <Route path="/veterinary-ai/:id" element={<VeterinaryAI />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/profile" element={<UserProfile />} />
       </Routes>
     </HashRouter>
   );
