@@ -10,6 +10,8 @@ import Market from './pages/Market';
 import ListingDetail from './pages/ListingDetail';
 import CreateListing from './pages/CreateListing';
 import MyListings from './pages/MyListings';
+import ChatDetail from './pages/ChatDetail';
+import Inbox from './pages/Inbox'; // Import Inbox
 import RegisterFarm from './pages/RegisterFarm';
 import RegisterWorker from './pages/RegisterWorker';
 import EditWorker from './pages/EditWorker';
@@ -22,6 +24,11 @@ import AddReproductionEvent from './pages/AddReproductionEvent';
 import CreateLot from './pages/CreateLot';
 import GenealogyTree from './pages/GenealogyTree';
 import AddWeight from './pages/AddWeight';
+import AddCheese from './pages/AddCheese';
+import RegisterCheese from './pages/RegisterCheese'; 
+import CheeseSales from './pages/CheeseSales'; // New Import
+import RegisterCheeseSale from './pages/RegisterCheeseSale'; // New Import
+import CheeseBatchDetail from './pages/CheeseBatchDetail'; // New Import
 import FarmsList from './pages/FarmsList';
 import Settings from './pages/Settings';
 
@@ -38,6 +45,8 @@ const App: React.FC = () => {
         <Route path="/market/my-listings" element={<MyListings />} />
         <Route path="/market/:id" element={<ListingDetail />} />
         <Route path="/market/create" element={<CreateListing />} />
+        <Route path="/chat/:id" element={<ChatDetail />} />
+        <Route path="/inbox" element={<Inbox />} />
 
         <Route path="/animal/:id" element={<AnimalDetail />} />
         <Route path="/genealogy/:id" element={<GenealogyTree />} />
@@ -49,6 +58,11 @@ const App: React.FC = () => {
         <Route path="/register-bovine" element={<RegisterBovine />} />
         <Route path="/edit-bovine/:id" element={<EditBovine />} />
         <Route path="/add-production/:id" element={<AddProduction />} />
+        <Route path="/add-cheese" element={<AddCheese />} />
+        <Route path="/register-cheese" element={<RegisterCheese />} />
+        <Route path="/cheese-sales" element={<CheeseSales />} />
+        <Route path="/register-cheese-sale" element={<RegisterCheeseSale />} />
+        <Route path="/cheese-batch/:id" element={<CheeseBatchDetail />} /> {/* New Route */}
         <Route path="/add-weight/:id" element={<AddWeight />} />
         <Route path="/add-health/:id" element={<AddHealthRecord />} />
         <Route path="/add-reproduction/:id" element={<AddReproductionEvent />} />

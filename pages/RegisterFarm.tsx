@@ -1,13 +1,18 @@
+
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, MapPin, Warehouse, Ruler, Sprout, Camera, Check, Crosshair, X, Navigation } from 'lucide-react';
+import { farmsData } from '../mockData';
 
 const RegisterFarm: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   
   // Form State
+  const [name, setName] = useState('');
   const [location, setLocation] = useState('');
+  const [heads, setHeads] = useState('');
+  const [size, setSize] = useState('');
   
   // Map Modal State
   const [showMap, setShowMap] = useState(false);
@@ -16,7 +21,27 @@ const RegisterFarm: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!name) return;
+
     setLoading(true);
+
+    const newFarm = {
+        id: Date.now().toString(),
+        name: name,
+        location: location || 'Ubicación Pendiente',
+        totalHead: parseInt(heads) || 0,
+        imageUrl: 'https://images.unsplash.com/photo-1500595046743-cd271d694d30?q=80&w=2074&auto=format&fit=crop', // Default placeholder
+        status: 'Active'
+    };
+
+    // Load existing farms or initialize with mock data
+    const savedFarms = localStorage.getItem('bovine_farms');
+    let currentFarms = savedFarms ? JSON.parse(savedFarms) : [...farmsData];
+    
+    // Add new farm
+    const updatedFarms = [...currentFarms, newFarm];
+    localStorage.setItem('bovine_farms', JSON.stringify(updatedFarms));
+
     // Simulate API call
     setTimeout(() => {
       setLoading(false);
@@ -68,6 +93,8 @@ const RegisterFarm: React.FC = () => {
                 <div className="absolute left-4 top-4 text-gray-500"><Warehouse size={20} /></div>
                 <input 
                   type="text" 
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                   placeholder="ej. Hacienda La Fortuna" 
                   className="w-full bg-surface-dark border border-white/10 rounded-xl py-4 pl-12 pr-4 text-white placeholder-gray-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                   required
@@ -108,6 +135,8 @@ const RegisterFarm: React.FC = () => {
                     <div className="absolute left-4 top-4 text-gray-500"><Ruler size={20} /></div>
                     <input 
                       type="number" 
+                      value={size}
+                      onChange={(e) => setSize(e.target.value)}
                       placeholder="0" 
                       className="w-full bg-surface-dark border border-white/10 rounded-xl py-4 pl-12 pr-4 text-white placeholder-gray-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                     />
@@ -119,6 +148,8 @@ const RegisterFarm: React.FC = () => {
                     <div className="absolute left-4 top-4 text-gray-500"><Sprout size={20} /></div>
                     <input 
                       type="number" 
+                      value={heads}
+                      onChange={(e) => setHeads(e.target.value)}
                       placeholder="0" 
                       className="w-full bg-surface-dark border border-white/10 rounded-xl py-4 pl-12 pr-4 text-white placeholder-gray-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                     />
@@ -146,7 +177,7 @@ const RegisterFarm: React.FC = () => {
       <div className="fixed bottom-0 w-full p-6 bg-background-dark/95 backdrop-blur-lg border-t border-white/5 z-30">
         <button 
           onClick={handleSubmit}
-          disabled={loading}
+          disabled={loading || !name}
           className="w-full h-14 bg-primary hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-background-dark font-bold text-lg rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all shadow-lg shadow-primary/20"
         >
           {loading ? (

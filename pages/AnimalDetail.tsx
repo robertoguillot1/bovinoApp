@@ -1,13 +1,18 @@
-import React, { useState } from 'react';
+
+import React, { useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Share2, TrendingUp, Cake, Weight, BrainCircuit, Edit2, Plus, Droplets, Syringe, Bell, ChevronRight, BriefcaseMedical, CheckCircle2, List, Calendar, Baby, Dna, Scale, TrendingDown, X } from 'lucide-react';
-import { AreaChart, Area, ResponsiveContainer, XAxis, Tooltip, YAxis, CartesianGrid } from 'recharts';
+import { ArrowLeft, Share2, TrendingUp, Cake, Weight, Edit2, Plus, Droplets, Syringe, Bell, ChevronRight, BriefcaseMedical, CheckCircle2, List, Calendar, Baby, Dna, Scale, TrendingDown, X, Image as ImageIcon, Loader2, AlertCircle, Clock } from 'lucide-react';
+import { AreaChart, Area, LineChart, Line, ResponsiveContainer, XAxis, Tooltip, YAxis, CartesianGrid } from 'recharts';
 import { allBovines } from '../mockData';
+import html2canvas from 'html2canvas';
 
 const AnimalDetail: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const [activeTab, setActiveTab] = useState('General');
+  
+  // Reference for Screenshot
+  const printRef = useRef<HTMLDivElement>(null);
   
   // Find the animal based on ID
   const animal = allBovines.find(b => b.id === id);
@@ -18,6 +23,7 @@ const AnimalDetail: React.FC = () => {
 
   // --- SHARE MODAL STATE ---
   const [showShareModal, setShowShareModal] = useState(false);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [shareOptions, setShareOptions] = useState({
       general: true,
       genealogy: true,
@@ -36,19 +42,52 @@ const AnimalDetail: React.FC = () => {
     );
   }
 
-  // Mock Data definitions (moved up for scope access in share function)
+  // --- MOCK DATA ---
   const pedigree = {
       father: { name: 'Thunderbolt', tag: '#9921', breed: animal.breed, img: 'https://images.unsplash.com/photo-1546445317-29f4545e9d53?q=80&w=2500&auto=format&fit=crop' },
       mother: { name: 'Bessie', tag: '#1029', breed: animal.breed, img: 'https://images.unsplash.com/photo-1541625602330-2277a4c46182?auto=format&fit=crop&w=100&h=100' },
   };
-  const vaccinations = [
-      { id: 1, name: 'Fiebre Aftosa', date: '12 Oct 23', dose: '2ml (IM)', batch: 'A234-X', type: 'Obligatoria', status: 'Done' },
-      { id: 2, name: 'Brucelosis', date: '15 Ene 23', dose: 'Cepa 19', batch: 'B-99', type: 'Cepa 19', status: 'Done', vet: 'Dr. Miguel Santos' },
-      { id: 3, name: 'Carbunco', date: '20 Nov 22', dose: '1 Dosis', batch: 'C-01', type: 'Rutina', status: 'Done' },
+
+  // Charts Data
+  const milkData = [
+    { day: '0', val: 0 }, { day: '30', val: 20 }, { day: '60', val: 28 },
+    { day: '90', val: 32 }, { day: '120', val: 30 }, { day: '150', val: 26 },
+    { day: '180', val: 22 }, { day: '210', val: 18 }, { day: '270', val: 12 },
   ];
 
-  // --- SHARE FUNCTIONALITY ---
-  const executeShare = async () => {
+  const weightData = [
+      { month: 'Ene', val: 380 }, { month: 'Mar', val: 405 }, { month: 'May', val: 422 },
+      { month: 'Jul', val: 435 }, { month: 'Sep', val: 442 }, { month: 'Nov', val: 450 }
+  ];
+
+  // Lists Data
+  const milkHistory = [
+      { date: 'Hoy, 06:30 AM', amount: 12.5, shift: 'AM' },
+      { date: 'Ayer, 04:15 PM', amount: 11.2, shift: 'PM' },
+      { date: 'Ayer, 06:30 AM', amount: 12.8, shift: 'AM' },
+      { date: '12 Oct, 04:20 PM', amount: 10.9, shift: 'PM' },
+  ];
+
+  const weightHistory = [
+      { date: '15 Nov 2023', weight: 450, gain: '+8kg', type: 'Rutina' },
+      { date: '15 Sep 2023', weight: 442, gain: '+7kg', type: 'Entrada' },
+      { date: '15 Jul 2023', weight: 435, gain: '+13kg', type: 'Rutina' },
+  ];
+
+  const healthRecords = [
+      { id: 1, type: 'Vaccine', title: 'Fiebre Aftosa (Refuerzo)', date: '12 Oct 2023', dose: '2ml IM', vet: 'Dr. Santos', status: 'Done' },
+      { id: 2, type: 'Treatment', title: 'Mastitis Leve', date: '05 Ago 2023', dose: 'Antibiótico 3 días', vet: 'Dr. Santos', status: 'Resolved' },
+      { id: 3, type: 'Checkup', title: 'Palpación', date: '15 Ene 2023', result: 'Preñada (4 meses)', vet: 'Dra. Ruiz', status: 'Done' },
+  ];
+
+  const reproEvents = [
+      { id: 1, date: '10 Nov 2023', type: 'Inseminación', detail: 'Toro: Zeus (Angus)', success: null },
+      { id: 2, date: '15 Ene 2023', type: 'Parto', detail: 'Cría Macho (Vivo)', success: true },
+      { id: 3, date: '01 Abr 2022', type: 'Inseminación', detail: 'Toro: Titan', success: true },
+  ];
+
+  // --- SHARE FUNCTIONALITY (TEXT) ---
+  const executeShareText = async () => {
       let text = `🐄 *Ficha Técnica: ${animal.tag}*\n`;
       
       if (shareOptions.general) {
@@ -75,8 +114,8 @@ const AnimalDetail: React.FC = () => {
       }
 
       if (shareOptions.health) {
-          const lastVax = vaccinations[0];
-          text += `\n💉 *SANIDAD*\nÚltima Vacuna: ${lastVax?.name || 'N/A'} (${lastVax?.date})\nEstado Reprod: ${animal.reproductiveStatus === 'Pregnant' ? 'Preñada' : 'Abierta'}\n`;
+          const lastVax = healthRecords.find(r => r.type === 'Vaccine');
+          text += `\n💉 *SANIDAD*\nÚltima Vacuna: ${lastVax?.title || 'N/A'} (${lastVax?.date})\nEstado Reprod: ${animal.reproductiveStatus === 'Pregnant' ? 'Preñada' : 'Abierta'}\n`;
       }
 
       text += `\n📲 _Generado por BovineGuard App_`;
@@ -94,43 +133,68 @@ const AnimalDetail: React.FC = () => {
               alert('Datos copiados al portapapeles');
           }
       } catch (err) {
-          console.log('Error sharing', err);
+          console.log('Error sharing text', err);
       }
       setShowShareModal(false);
   };
 
-  // Mock Data: Milk Chart
-  const milkData = [
-    { day: '0', val: 0 }, { day: '30', val: 20 }, { day: '60', val: 28 },
-    { day: '90', val: 32 }, { day: '120', val: 30 }, { day: '150', val: 26 },
-    { day: '180', val: 22 }, { day: '210', val: 18 }, { day: '270', val: 12 },
-  ];
+  // --- SHARE FUNCTIONALITY (IMAGE) ---
+  const executeShareImage = async () => {
+      if (!printRef.current) return;
+      setIsGeneratingImage(true);
+      setShowShareModal(false); // Hide modal temporarily
 
-  // Mock Data: Milk History (NEW)
-  const milkHistory = [
-    { id: 1, date: 'Hoy, 06:00 AM', amount: 12.5, quality: 'Premium', shift: 'AM' },
-    { id: 2, date: 'Ayer, 05:30 PM', amount: 11.8, quality: 'Standard', shift: 'PM' },
-    { id: 3, date: 'Ayer, 06:00 AM', amount: 13.2, quality: 'Premium', shift: 'AM' },
-    { id: 4, date: '10 Oct, 05:45 PM', amount: 11.5, quality: 'Standard', shift: 'PM' },
-  ];
+      // Wait a moment for modal to disappear from DOM visually
+      await new Promise(resolve => setTimeout(resolve, 300));
 
-  // Mock Data: Weight History
-  const weightHistory = [
-      { id: 1, date: '12 Oct, 2023', weight: animal.weight, change: '+12 kg', type: 'gain', event: 'Pesaje Rutina' },
-      { id: 2, date: '12 Sep, 2023', weight: animal.weight - 12, change: '+8 kg', type: 'gain', event: 'Pesaje Mensual' },
-      { id: 3, date: '12 Ago, 2023', weight: animal.weight - 20, change: '-2 kg', type: 'loss', event: 'Post-Enfermedad' },
-      { id: 4, date: '12 Jul, 2023', weight: animal.weight - 18, change: '+15 kg', type: 'gain', event: 'Pesaje Mensual' },
-  ];
+      try {
+          const canvas = await html2canvas(printRef.current, {
+              useCORS: true, // Important for external images
+              scale: 2, // Improve quality
+              backgroundColor: '#102212', // Force background color
+              ignoreElements: (element) => {
+                  // Ignore elements with specific class if needed, e.g., the share button itself if it was visible
+                  return element.classList.contains('no-print'); 
+              }
+          });
 
-  // Mock Data: Weight Chart
-  const weightChartData = [
-      { month: 'Ene', val: animal.weight - 70 },
-      { month: 'Feb', val: animal.weight - 55 },
-      { month: 'Mar', val: animal.weight - 40 },
-      { month: 'Abr', val: animal.weight - 28 },
-      { month: 'May', val: animal.weight - 15 },
-      { month: 'Jun', val: animal.weight },
-  ];
+          canvas.toBlob(async (blob) => {
+              if (!blob) {
+                  setIsGeneratingImage(false);
+                  return;
+              }
+
+              const file = new File([blob], `BovineGuard_${animal.tag}.png`, { type: 'image/png' });
+
+              // Check if browser supports sharing files
+              if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                  try {
+                      await navigator.share({
+                          files: [file],
+                          title: `Perfil ${animal.tag}`,
+                          text: `Mira el perfil de ${animal.tag} en BovineGuard.`
+                      });
+                  } catch (shareError) {
+                      console.error('Error native sharing', shareError);
+                  }
+              } else {
+                  // Fallback: Download image
+                  const link = document.createElement('a');
+                  link.download = `BovineGuard_${animal.tag}.png`;
+                  link.href = canvas.toDataURL();
+                  link.click();
+                  alert('Imagen guardada en descargas (tu navegador no soporta compartir imágenes directo).');
+              }
+              setIsGeneratingImage(false);
+          }, 'image/png');
+
+      } catch (error) {
+          console.error("Screenshot error:", error);
+          alert("Error al generar la imagen.");
+          setIsGeneratingImage(false);
+          setShowShareModal(true); // Re-show modal on error
+      }
+  };
 
   const tabs = {
       'General': 'General',
@@ -139,39 +203,15 @@ const AnimalDetail: React.FC = () => {
       'Reproduction': 'Reproducción'
   }
 
-  // Mock Treatment Data
-  const treatments = [
-      { id: 1, name: 'Mastitis Leve', date: '05 Nov 23', status: 'Finished', description: 'Tratamiento con Antibiótico X por 5 días.', type: 'Curativo' },
-      { id: 2, name: 'Desparasitación', date: '10 Sep 23', status: 'Finished', description: 'Ivermectina al 1%', type: 'Preventivo' },
-  ];
-
-  // Mock Health Summary for General Tab
-  const healthSummary = [
-      { id: 1, type: 'Vaccine', title: 'Vacuna Aftosa', date: '12 Oct, 2023', desc: 'Dosis semestral regular.', color: 'text-blue-400' },
-      { id: 2, type: 'Treatment', title: 'Tratamiento Mastitis', date: '05 Ago, 2023', desc: 'Antibiótico (3 días). Leche retenida.', color: 'text-red-400' },
-      { id: 3, type: 'Checkup', title: 'Chequeo General', date: '15 Ene, 2023', desc: 'Condición corporal excelente.', color: 'text-green-400' },
-  ];
-
-  // Mock Calves
-  const calves = [
-      { id: '#4093', name: 'Benny', date: '14 Feb 2023', sex: 'Male', status: 'Easy Calving' },
-      { id: '#3011', name: 'Luna', date: '25 Jan 2022', sex: 'Female', status: 'Assisted' },
-  ];
-
-  const navigateToWeight = () => {
-      setProductionType('Weight');
-      setActiveTab('Production');
-  };
-
   return (
-    <div className="bg-background-dark min-h-screen text-white font-display flex flex-col relative">
+    <div className="bg-background-dark min-h-screen text-white font-display flex flex-col relative" ref={printRef}>
       {/* Parallax Header Image */}
       <div className="relative w-full h-80 shrink-0">
         <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url("${animal.imageUrl}")` }}></div>
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-background-dark"></div>
         
-        {/* Nav */}
-        <div className="absolute top-0 left-0 right-0 p-4 pt-8 flex justify-between items-center z-50">
+        {/* Nav - Hide during print */}
+        <div className="absolute top-0 left-0 right-0 p-4 pt-8 flex justify-between items-center z-50 no-print">
           <button 
             onClick={() => navigate('/inventory')} 
             className="w-10 h-10 rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center hover:bg-black/40 text-white cursor-pointer transition-colors active:scale-95"
@@ -218,7 +258,7 @@ const AnimalDetail: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="sticky top-0 z-40 bg-background-dark/95 backdrop-blur-md border-b border-white/5 w-full overflow-x-auto no-scrollbar">
+      <div className="sticky top-0 z-40 bg-background-dark/95 backdrop-blur-md border-b border-white/5 w-full overflow-x-auto no-scrollbar no-print">
         <div className="flex min-w-full px-4">
           {Object.entries(tabs).map(([key, label]) => (
             <button 
@@ -233,50 +273,39 @@ const AnimalDetail: React.FC = () => {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 pb-24">
-        {/* ... (Existing Tab Content Logic remains the same, code omitted for brevity but preserved) ... */}
         {/* ==================== GENERAL TAB ==================== */}
         {activeTab === 'General' && (
           <div className="space-y-6">
             
-            {/* Genealogy Section */}
-            <div>
-                <div className="flex items-center justify-between px-1 mb-2">
-                    <h2 className="text-lg font-bold">Árbol Genealógico</h2>
-                    <button 
-                        onClick={() => navigate(`/genealogy/${id}`)}
-                        className="text-primary text-xs font-bold tracking-wider uppercase hover:underline"
-                    >
-                        Ver Completo
-                    </button>
-                </div>
-                <div className="bg-surface-dark border border-white/5 rounded-2xl p-6 relative">
-                    <div className="flex justify-between items-center relative">
-                        <div className="absolute top-1/2 left-1/4 right-1/4 h-px bg-white/10"></div>
-                        
-                        {/* Father */}
-                        <div className="flex flex-col items-center relative z-10">
-                            <div className="w-16 h-16 rounded-full p-0.5 border-2 border-blue-500/20 mb-2 bg-surface-darker">
-                                <img src={pedigree.father.img} className="w-full h-full rounded-full object-cover filter brightness-90" />
+            {/* 1. ALERTS & STATUS SECTION */}
+            {(animal.healthStatus === 'Sick' || animal.reproductiveStatus === 'Pregnant' || animal.isLactating) && (
+                <div className="grid grid-cols-1 gap-3">
+                    {animal.healthStatus === 'Sick' && (
+                        <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl flex items-start gap-3">
+                            <div className="bg-red-500/20 p-2 rounded-full text-red-500 animate-pulse">
+                                <AlertCircle size={20} />
                             </div>
-                            <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-0.5">Padre</span>
-                            <h3 className="text-white text-sm font-bold">{pedigree.father.name}</h3>
-                            <p className="text-gray-500 text-[10px]">{pedigree.father.tag}</p>
-                        </div>
-
-                        {/* Mother */}
-                        <div className="flex flex-col items-center relative z-10">
-                            <div className="w-16 h-16 rounded-full p-0.5 border-2 border-pink-500/20 mb-2 bg-surface-darker">
-                                <img src={pedigree.mother.img} className="w-full h-full rounded-full object-cover filter brightness-90" />
+                            <div>
+                                <h4 className="text-red-400 font-bold text-sm">Alerta Sanitaria Activa</h4>
+                                <p className="text-xs text-gray-400 mt-1">Este animal tiene un tratamiento en curso. Revisar pestaña Sanidad.</p>
                             </div>
-                            <span className="text-[10px] font-bold text-pink-400 uppercase tracking-wider mb-0.5">Madre</span>
-                            <h3 className="text-white text-sm font-bold">{pedigree.mother.name}</h3>
-                            <p className="text-gray-500 text-[10px]">{pedigree.mother.tag}</p>
                         </div>
-                    </div>
+                    )}
+                    {animal.reproductiveStatus === 'Pregnant' && (
+                        <div className="bg-purple-500/10 border border-purple-500/20 p-4 rounded-xl flex items-start gap-3">
+                            <div className="bg-purple-500/20 p-2 rounded-full text-purple-400">
+                                <Baby size={20} />
+                            </div>
+                            <div>
+                                <h4 className="text-purple-400 font-bold text-sm">Gestación Confirmada</h4>
+                                <p className="text-xs text-gray-400 mt-1">Parto estimado: 24 Nov 2024. Faltan 45 días.</p>
+                            </div>
+                        </div>
+                    )}
                 </div>
-            </div>
+            )}
 
-            {/* Quick Stats Row */}
+            {/* 2. Quick Stats Row */}
             <div className="grid grid-cols-2 gap-3">
                 <div className="bg-surface-dark p-4 rounded-xl border border-white/5 flex flex-col justify-center h-24">
                     <div className="flex items-center gap-2 mb-1">
@@ -296,7 +325,70 @@ const AnimalDetail: React.FC = () => {
                 </div>
             </div>
 
-            {/* Milk Summary */}
+            {/* 3. Recent Activity (Consolidated Notifications) */}
+            <div>
+                <h3 className="text-lg font-bold mb-3">Actividad Reciente</h3>
+                <div className="bg-surface-dark border border-white/5 rounded-2xl p-1">
+                    {[
+                        { icon: Syringe, color: 'text-blue-400', bg: 'bg-blue-500/10', title: 'Vacunación Aftosa', date: '12 Oct', desc: 'Dosis completa aplicada' },
+                        { icon: Scale, color: 'text-accent-amber', bg: 'bg-accent-amber/10', title: 'Pesaje de Rutina', date: '10 Oct', desc: 'Ganancia +4.5kg' },
+                        { icon: CheckCircle2, color: 'text-green-400', bg: 'bg-green-500/10', title: 'Revisión General', date: '01 Oct', desc: 'Estado corporal 4/5' },
+                    ].map((event, i) => (
+                        <div key={i} className="flex items-center gap-3 p-3 border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors cursor-pointer">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${event.bg} ${event.color}`}>
+                                <event.icon size={18} />
+                            </div>
+                            <div className="flex-1">
+                                <div className="flex justify-between">
+                                    <h4 className="text-sm font-bold text-white">{event.title}</h4>
+                                    <span className="text-[10px] text-gray-500">{event.date}</span>
+                                </div>
+                                <p className="text-xs text-gray-400">{event.desc}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+            
+            {/* 4. Genealogy Section */}
+            <div>
+                <div className="flex items-center justify-between px-1 mb-2">
+                    <h2 className="text-lg font-bold">Árbol Genealógico</h2>
+                    <button 
+                        onClick={() => navigate(`/genealogy/${id}`)}
+                        className="text-primary text-xs font-bold tracking-wider uppercase hover:underline no-print"
+                    >
+                        Ver Completo
+                    </button>
+                </div>
+                <div className="bg-surface-dark border border-white/5 rounded-2xl p-6 relative">
+                    <div className="flex justify-between items-center relative">
+                        <div className="absolute top-1/2 left-1/4 right-1/4 h-px bg-white/10"></div>
+                        
+                        {/* Father */}
+                        <div className="flex flex-col items-center relative z-10">
+                            <div className="w-16 h-16 rounded-full p-0.5 border-2 border-blue-500/20 mb-2 bg-surface-darker">
+                                <img src={pedigree.father.img} className="w-full h-full rounded-full object-cover filter brightness-90" crossOrigin="anonymous" />
+                            </div>
+                            <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-0.5">Padre</span>
+                            <h3 className="text-white text-sm font-bold">{pedigree.father.name}</h3>
+                            <p className="text-gray-500 text-[10px]">{pedigree.father.tag}</p>
+                        </div>
+
+                        {/* Mother */}
+                        <div className="flex flex-col items-center relative z-10">
+                            <div className="w-16 h-16 rounded-full p-0.5 border-2 border-pink-500/20 mb-2 bg-surface-darker">
+                                <img src={pedigree.mother.img} className="w-full h-full rounded-full object-cover filter brightness-90" crossOrigin="anonymous" />
+                            </div>
+                            <span className="text-[10px] font-bold text-pink-400 uppercase tracking-wider mb-0.5">Madre</span>
+                            <h3 className="text-white text-sm font-bold">{pedigree.mother.name}</h3>
+                            <p className="text-gray-500 text-[10px]">{pedigree.mother.tag}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* 5. Milk Summary (If Cow) */}
             {animal.category === 'Cow' && (
                 <div>
                     <div className="flex justify-between items-center px-1 mb-2">
@@ -326,128 +418,124 @@ const AnimalDetail: React.FC = () => {
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
-                        <div className="flex justify-between text-[10px] text-gray-500 mt-2 px-2 border-t border-white/5 pt-2 border-dashed">
-                            <span>Día 0</span>
-                            <span>Día 90</span>
-                            <span>Día 180</span>
-                            <span>Día 270</span>
-                        </div>
                     </div>
                 </div>
             )}
-
-            {/* Health History Summary */}
-            <div>
-                <h2 className="text-lg font-bold mb-3 px-1">Historial Sanitario</h2>
-                <div className="relative space-y-4 pl-4">
-                     {/* Connector Line */}
-                     <div className="absolute left-[19px] top-2 bottom-2 w-px bg-white/10"></div>
-
-                     {healthSummary.map((item) => (
-                         <div key={item.id} className="relative pl-6">
-                             {/* Dot */}
-                             <div className={`absolute left-[15px] top-1.5 w-2.5 h-2.5 rounded-full border-2 border-background-dark z-10 ${
-                                 item.type === 'Vaccine' ? 'bg-blue-500' : 
-                                 item.type === 'Treatment' ? 'bg-red-500' : 'bg-green-500'
-                             }`}></div>
-                             
-                             <div className="flex flex-col gap-1">
-                                 <span className="text-[10px] font-bold text-gray-400">{item.date}</span>
-                                 <div className="bg-surface-dark border border-white/5 p-3 rounded-lg hover:border-white/20 transition-colors">
-                                     <div className="flex items-center gap-2 mb-1">
-                                        {item.type === 'Vaccine' && <Syringe size={14} className="text-blue-400" />}
-                                        {item.type === 'Treatment' && <BriefcaseMedical size={14} className="text-red-400" />}
-                                        {item.type === 'Checkup' && <CheckCircle2 size={14} className="text-green-400" />}
-                                        <h4 className="text-sm font-bold text-white">{item.title}</h4>
-                                     </div>
-                                     <p className="text-xs text-gray-400 leading-relaxed">{item.desc}</p>
-                                 </div>
-                             </div>
-                         </div>
-                     ))}
-                </div>
-            </div>
           </div>
         )}
         
         {/* ==================== PRODUCTION TAB ==================== */}
         {activeTab === 'Production' && (
            <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
-               {/* Milk/Weight Switcher */}
+              {/* Toggle */}
               <div className="bg-surface-dark border border-white/10 p-1 rounded-xl flex">
-                 <button 
-                     onClick={() => setProductionType('Milk')}
-                     className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                         productionType === 'Milk' 
-                         ? 'bg-white text-black shadow-sm' 
-                         : 'text-gray-400 hover:text-white'
-                     }`}
-                 >
-                     <Droplets size={16} /> Leche
-                 </button>
-                 <button 
-                     onClick={() => setProductionType('Weight')}
-                     className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                         productionType === 'Weight' 
-                         ? 'bg-white text-black shadow-sm' 
-                         : 'text-gray-400 hover:text-white'
-                     }`}
-                 >
-                     <Scale size={16} /> Peso / Carne
-                 </button>
+                 <button onClick={() => setProductionType('Milk')} className={`flex-1 py-2 rounded-lg text-sm font-bold ${productionType === 'Milk' ? 'bg-white text-black shadow' : 'text-gray-400 hover:text-white'}`}>Leche</button>
+                 <button onClick={() => setProductionType('Weight')} className={`flex-1 py-2 rounded-lg text-sm font-bold ${productionType === 'Weight' ? 'bg-white text-black shadow' : 'text-gray-400 hover:text-white'}`}>Peso</button>
               </div>
 
-              {productionType === 'Milk' && (
-                  <div className="space-y-4 animate-in fade-in">
-                      <button 
-                        onClick={() => navigate(`/add-production/${id}`)}
-                        className="w-full bg-primary hover:bg-primary-dark text-background-dark py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
-                    >
-                        <Plus size={24} />
-                        <span className="flex items-center gap-1">Registrar <Droplets size={18} fill="currentColor" /></span>
-                    </button>
-                    {/* ... (Existing Milk Chart & History) ... */}
-                    <div className="h-64 bg-surface-dark rounded-xl border border-white/5 pt-6 pr-2">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={milkData}>
-                                <defs>
-                                    <linearGradient id="colorMilk" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#11d421" stopOpacity={0.3}/>
-                                        <stop offset="95%" stopColor="#11d421" stopOpacity={0}/>
-                                    </linearGradient>
-                                </defs>
-                                <XAxis dataKey="day" stroke="#555" tick={{fontSize: 10}} tickLine={false} axisLine={false} />
-                                <Tooltip contentStyle={{backgroundColor: '#18281a', borderColor: '#333', color: '#fff'}} itemStyle={{color: '#11d421'}} />
-                                <Area type="monotone" dataKey="val" stroke="#11d421" strokeWidth={3} fillOpacity={1} fill="url(#colorMilk)" />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </div>
-                  </div>
-              )}
-
-              {productionType === 'Weight' && (
-                  <div className="space-y-6 animate-in fade-in">
-                       {/* Weight Header Card */}
-                    <div className="bg-surface-dark rounded-2xl p-6 border border-white/10 relative overflow-hidden">
-                        <div className="absolute right-0 top-0 w-32 h-32 bg-primary/5 rounded-bl-full -mr-4 -mt-4"></div>
-                        <div className="flex justify-between items-start mb-6">
-                            <div>
-                                <p className="text-sm text-gray-400 font-bold uppercase tracking-wide mb-1">Peso Actual</p>
-                                <div className="flex items-baseline gap-1">
-                                    <h2 className="text-5xl font-extrabold text-white">{animal.weight}</h2>
-                                    <span className="text-xl text-gray-500 font-medium">kg</span>
-                                </div>
-                            </div>
-                            <button 
-                                onClick={() => navigate(`/add-weight/${id}`)}
-                                className="bg-accent-amber text-black p-3 rounded-xl shadow-lg shadow-accent-amber/20 hover:scale-105 transition-transform active:scale-95 z-10 cursor-pointer"
-                            >
-                                <Plus size={24} />
-                            </button>
+              {productionType === 'Milk' ? (
+                  <>
+                    <div className="bg-surface-dark rounded-xl border border-white/5 p-4 shadow-sm relative">
+                        <h3 className="text-sm font-bold text-gray-300 mb-2">Histórico de Lactancia</h3>
+                        <div className="h-48 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={milkData}>
+                                    <defs>
+                                        <linearGradient id="colorMilk" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#11d421" stopOpacity={0.3}/>
+                                            <stop offset="95%" stopColor="#11d421" stopOpacity={0}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                                    <XAxis dataKey="day" stroke="#6b7280" fontSize={10} tickLine={false} axisLine={false} />
+                                    <YAxis stroke="#6b7280" fontSize={10} tickLine={false} axisLine={false} />
+                                    <Tooltip 
+                                        contentStyle={{backgroundColor: '#18281a', border: '1px solid #ffffff20', borderRadius: '8px'}}
+                                        itemStyle={{color: '#fff'}}
+                                        labelStyle={{display: 'none'}}
+                                    />
+                                    <Area type="monotone" dataKey="val" stroke="#11d421" strokeWidth={3} fill="url(#colorMilk)" activeDot={{ r: 6, fill: '#fff' }} />
+                                </AreaChart>
+                            </ResponsiveContainer>
                         </div>
                     </div>
-                     {/* ... (Existing Weight Chart & History) ... */}
-                  </div>
+
+                    <div className="space-y-3">
+                        <h3 className="text-sm font-bold text-gray-300">Registros Recientes</h3>
+                        {milkHistory.map((record, i) => (
+                            <div key={i} className="flex items-center justify-between p-3 bg-surface-dark border border-white/5 rounded-xl">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400">
+                                        <Droplets size={20} />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-white">{record.amount} Litros</p>
+                                        <p className="text-[10px] text-gray-500">{record.date}</p>
+                                    </div>
+                                </div>
+                                <span className="text-xs font-bold text-gray-400 bg-surface-darker px-2 py-1 rounded">{record.shift}</span>
+                            </div>
+                        ))}
+                    </div>
+                    
+                    <button 
+                        onClick={() => navigate(`/add-production/${id}`)}
+                        className="fixed bottom-24 right-5 bg-primary text-black font-bold h-14 px-6 rounded-full shadow-lg shadow-primary/20 flex items-center gap-2 active:scale-95 transition-transform z-30"
+                    >
+                        <Plus size={24} /> Registrar Ordeño
+                    </button>
+                  </>
+              ) : (
+                  <>
+                    <div className="bg-surface-dark rounded-xl border border-white/5 p-4 shadow-sm">
+                        <div className="flex justify-between items-start mb-2">
+                            <h3 className="text-sm font-bold text-gray-300">Curva de Crecimiento</h3>
+                            <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">+0.8 kg/día</span>
+                        </div>
+                        <div className="h-48 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={weightData}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                                    <XAxis dataKey="month" stroke="#6b7280" fontSize={10} tickLine={false} axisLine={false} />
+                                    <Tooltip 
+                                        contentStyle={{backgroundColor: '#18281a', border: '1px solid #ffffff20', borderRadius: '8px'}}
+                                        itemStyle={{color: '#fff'}}
+                                        labelStyle={{display: 'none'}}
+                                    />
+                                    <Line type="monotone" dataKey="val" stroke="#f59e0b" strokeWidth={3} dot={{r:4, fill:'#f59e0b'}} activeDot={{ r: 6, fill: '#fff' }} />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <div className="space-y-3">
+                        <h3 className="text-sm font-bold text-gray-300">Historial de Pesaje</h3>
+                        {weightHistory.map((record, i) => (
+                            <div key={i} className="flex items-center justify-between p-3 bg-surface-dark border border-white/5 rounded-xl">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-accent-amber/10 flex items-center justify-center text-accent-amber">
+                                        <Scale size={20} />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-white">{record.weight} kg</p>
+                                        <p className="text-[10px] text-gray-500">{record.date}</p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <span className="block text-xs font-bold text-green-400">{record.gain}</span>
+                                    <span className="text-[10px] text-gray-500 uppercase">{record.type}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <button 
+                        onClick={() => navigate(`/add-weight/${id}`)}
+                        className="fixed bottom-24 right-5 bg-accent-amber text-black font-bold h-14 px-6 rounded-full shadow-lg shadow-accent-amber/20 flex items-center gap-2 active:scale-95 transition-transform z-30"
+                    >
+                        <Plus size={24} /> Registrar Peso
+                    </button>
+                  </>
               )}
            </div>
         )}
@@ -455,97 +543,94 @@ const AnimalDetail: React.FC = () => {
         {/* ==================== HEALTH TAB ==================== */}
         {activeTab === 'Health' && (
              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                 <div className="bg-surface-dark border border-white/10 p-1 rounded-xl flex">
-                     <button 
-                         onClick={() => setHealthSubTab('Vaccination')}
-                         className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
-                             healthSubTab === 'Vaccination' 
-                             ? 'bg-white text-black shadow-sm' 
-                             : 'text-gray-400 hover:text-white'
-                         }`}
-                     >
-                         Vacunación
-                     </button>
-                     <button 
-                         onClick={() => setHealthSubTab('Treatments')}
-                         className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
-                             healthSubTab === 'Treatments' 
-                             ? 'bg-white text-black shadow-sm' 
-                             : 'text-gray-400 hover:text-white'
-                         }`}
-                     >
-                         Tratamientos
-                     </button>
+                 <div className="flex items-center gap-2 mb-2">
+                     <h3 className="text-lg font-bold">Ficha Sanitaria</h3>
+                     <span className="bg-green-500/10 text-green-500 text-[10px] px-2 py-0.5 rounded border border-green-500/20 font-bold uppercase">Estado: Saludable</span>
                  </div>
-                 {/* ... (Existing Health lists) ... */}
-                 
-                 {/* Register Button & Gemini (Always visible at bottom) */}
-                 <div className="pt-2 space-y-4">
-                    <button 
-                        onClick={() => navigate(`/add-health/${id}`)}
-                        className="w-full bg-primary hover:bg-primary-dark text-background-dark py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
-                    >
-                        <Plus size={24} />
-                        <span className="flex items-center gap-1">Registrar Nuevo</span>
-                    </button>
 
-                     {/* Gemini Card */}
-                     <div className="bg-gradient-to-br from-indigo-900/50 to-purple-900/50 rounded-xl p-4 border border-indigo-500/20 relative overflow-hidden group">
-                         <div className="flex items-center gap-3">
-                             <div className="p-2 bg-indigo-500/20 rounded-lg text-indigo-300">
-                                <BrainCircuit size={20} />
+                 <div className="relative pl-4 space-y-6 border-l-2 border-white/10 ml-2">
+                     {healthRecords.map((record, index) => (
+                         <div key={index} className="relative pl-6">
+                             {/* Timeline Dot */}
+                             <div className={`absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 border-background-dark ${
+                                 record.type === 'Vaccine' ? 'bg-blue-500' : 
+                                 record.type === 'Treatment' ? 'bg-red-500' : 'bg-purple-500'
+                             }`}></div>
+                             
+                             <div className="bg-surface-dark border border-white/5 p-4 rounded-xl hover:border-white/20 transition-colors">
+                                 <div className="flex justify-between items-start mb-1">
+                                     <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                                         record.type === 'Vaccine' ? 'bg-blue-500/10 text-blue-400' : 
+                                         record.type === 'Treatment' ? 'bg-red-500/10 text-red-400' : 'bg-purple-500/10 text-purple-400'
+                                     }`}>{record.type}</span>
+                                     <span className="text-xs text-gray-500">{record.date}</span>
+                                 </div>
+                                 <h4 className="text-white font-bold text-base mb-1">{record.title}</h4>
+                                 <p className="text-xs text-gray-400 mb-2">
+                                     {record.type === 'Checkup' ? `Resultado: ${record.result}` : `Dosis: ${record.dose}`}
+                                 </p>
+                                 <div className="flex items-center gap-2 pt-2 border-t border-white/5">
+                                     <div className="w-5 h-5 rounded-full bg-gray-700 flex items-center justify-center text-[10px] text-white">
+                                         DR
+                                     </div>
+                                     <span className="text-[10px] text-gray-400">{record.vet}</span>
+                                 </div>
                              </div>
-                             <div>
-                                <h4 className="font-bold text-sm text-indigo-100">Consultar IA Veterinaria</h4>
-                                <p className="text-xs text-indigo-300">¿Dudas sobre síntomas o dosis?</p>
-                             </div>
-                             <button 
-                                onClick={() => navigate(`/veterinary-ai/${id}`)}
-                                className="ml-auto bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors"
-                             >
-                                <ChevronRight size={20} />
-                             </button>
                          </div>
-                     </div>
+                     ))}
                  </div>
+
+                 <button 
+                    onClick={() => navigate(`/add-health/${id}`)}
+                    className="fixed bottom-24 right-5 bg-blue-500 text-white font-bold h-14 px-6 rounded-full shadow-lg shadow-blue-500/20 flex items-center gap-2 active:scale-95 transition-transform z-30"
+                >
+                    <Plus size={24} /> Evento Sanitario
+                </button>
              </div>
         )}
-        
+
         {/* ==================== REPRODUCTION TAB ==================== */}
         {activeTab === 'Reproduction' && (
            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-              <button 
-                onClick={() => navigate(`/add-reproduction/${id}`)}
-                className="w-full bg-surface-dark hover:bg-white/5 text-purple-400 border border-purple-500/30 hover:border-purple-500 py-3.5 rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-              >
-                  <Plus size={20} />
-                  <span className="flex items-center gap-1">Evento Reproductivo <Dna size={16} /></span>
-              </button>
-              {/* ... (Existing Reproduction Cards) ... */}
-              <div className="bg-surface-dark rounded-2xl p-6 border border-purple-500/30 relative overflow-hidden">
-                 <div className="absolute top-0 right-0 p-4 opacity-10 text-purple-500">
-                    <Baby size={80} />
-                 </div>
-                 <div className="relative z-10">
-                    <span className="px-3 py-1 rounded-full bg-purple-500/20 text-purple-400 text-xs font-bold uppercase tracking-wider mb-3 inline-block">Estado: Preñada</span>
-                    
-                    <div className="mb-4">
-                        <div className="flex justify-between items-end mb-2">
-                           <span className="text-3xl font-bold text-white">5.5 <span className="text-sm font-normal text-gray-400">Meses</span></span>
-                           <span className="text-sm font-bold text-gray-400">Gestación</span>
-                        </div>
-                        {/* Progress Bar */}
-                        <div className="h-3 w-full bg-background-dark rounded-full overflow-hidden border border-white/10">
-                            <div className="h-full bg-gradient-to-r from-purple-600 to-purple-400 w-[60%] rounded-full shadow-[0_0_10px_rgba(168,85,247,0.5)]"></div>
-                        </div>
-                        <div className="flex justify-between text-[10px] text-gray-500 mt-1 uppercase font-bold tracking-wide">
-                            <span>Concepción</span>
-                            <span>Secado</span>
-                            <span>Parto</span>
-                        </div>
-                    </div>
-                 </div>
+              <div className="bg-surface-dark border border-white/5 p-4 rounded-xl flex items-center justify-between">
+                  <div>
+                      <p className="text-xs text-gray-400 font-bold uppercase">Estado Actual</p>
+                      <p className="text-xl font-bold text-white text-purple-400 flex items-center gap-2">
+                          <CheckCircle2 size={20} /> Preñada
+                      </p>
+                  </div>
+                  <div className="text-right">
+                      <p className="text-xs text-gray-400 font-bold uppercase">Parto Estimado</p>
+                      <p className="text-lg font-bold text-white">24 Nov 2024</p>
+                  </div>
               </div>
+
+              <div className="space-y-3">
+                  <h3 className="text-sm font-bold text-gray-300">Historial de Eventos</h3>
+                  {reproEvents.map((event, i) => (
+                      <div key={i} className="flex gap-4 p-3 bg-surface-dark border border-white/5 rounded-xl items-start">
+                          <div className={`mt-1 w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                              event.type === 'Parto' ? 'bg-green-500/10 text-green-500' : 'bg-purple-500/10 text-purple-400'
+                          }`}>
+                              {event.type === 'Parto' ? <Baby size={20} /> : <Dna size={20} />}
+                          </div>
+                          <div className="flex-1">
+                              <div className="flex justify-between">
+                                  <h4 className="font-bold text-white text-sm">{event.type}</h4>
+                                  <span className="text-[10px] text-gray-500">{event.date}</span>
+                              </div>
+                              <p className="text-xs text-gray-400 mt-0.5">{event.detail}</p>
+                          </div>
+                      </div>
+                  ))}
+              </div>
+
+              <button 
+                    onClick={() => navigate(`/add-reproduction/${id}`)}
+                    className="fixed bottom-24 right-5 bg-purple-500 text-white font-bold h-14 px-6 rounded-full shadow-lg shadow-purple-500/20 flex items-center gap-2 active:scale-95 transition-transform z-30"
+                >
+                    <Plus size={24} /> Evento Reprod.
+              </button>
            </div>
         )}
 
@@ -553,7 +638,7 @@ const AnimalDetail: React.FC = () => {
 
       {/* --- CUSTOM SHARE MODAL --- */}
       {showShareModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200 no-print">
             <div className="bg-[#18281a] w-full max-w-xs rounded-3xl border border-white/10 p-6 shadow-2xl relative animate-in zoom-in-95 duration-300">
                 <button onClick={() => setShowShareModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors">
                     <X size={20}/>
@@ -563,24 +648,46 @@ const AnimalDetail: React.FC = () => {
                     <Share2 size={20} />
                     <h3 className="font-bold text-lg text-white">Compartir Perfil</h3>
                 </div>
-                <p className="text-xs text-gray-400 mb-6">Selecciona los datos a compartir:</p>
+                <p className="text-xs text-gray-400 mb-6">Selecciona el formato:</p>
 
-                <div className="space-y-4 mb-8">
+                {/* Screenshot Button */}
+                <button 
+                    onClick={executeShareImage} 
+                    className="w-full py-4 mb-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg"
+                >
+                    <ImageIcon size={20} />
+                    Compartir como Imagen
+                </button>
+
+                <div className="relative flex py-2 items-center">
+                    <div className="flex-grow border-t border-white/10"></div>
+                    <span className="flex-shrink-0 mx-4 text-gray-500 text-xs font-bold uppercase">O Texto Plano</span>
+                    <div className="flex-grow border-t border-white/10"></div>
+                </div>
+
+                <div className="space-y-4 mb-6 mt-2">
                     <ToggleRow label="Datos Generales" checked={shareOptions.general} onChange={v => setShareOptions({...shareOptions, general: v})} />
                     <ToggleRow label="Genealogía" checked={shareOptions.genealogy} onChange={v => setShareOptions({...shareOptions, genealogy: v})} />
                     <ToggleRow label="Producción" checked={shareOptions.production} onChange={v => setShareOptions({...shareOptions, production: v})} />
-                    <ToggleRow label="Historial Sanitario" checked={shareOptions.health} onChange={v => setShareOptions({...shareOptions, health: v})} />
                 </div>
 
                 <button 
-                    onClick={executeShare} 
-                    className="w-full py-4 bg-primary hover:bg-primary-dark text-black font-bold rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-[0_0_20px_rgba(17,212,33,0.3)]"
+                    onClick={executeShareText} 
+                    className="w-full py-3 bg-surface-dark border border-primary/50 text-primary font-bold rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 hover:bg-primary/10"
                 >
                     <Share2 size={18} />
-                    Compartir Datos Seleccionados
+                    Copiar / Enviar Texto
                 </button>
             </div>
         </div>
+      )}
+
+      {/* Loading Overlay for Screenshot */}
+      {isGeneratingImage && (
+          <div className="fixed inset-0 z-[70] flex flex-col items-center justify-center bg-black/90 backdrop-blur-md">
+              <Loader2 size={48} className="text-primary animate-spin mb-4" />
+              <p className="text-white font-bold animate-pulse">Generando Imagen...</p>
+          </div>
       )}
 
     </div>

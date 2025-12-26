@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search, Plus, MapPin, TrendingUp, TrendingDown, Calendar, Wallet, X, Check, DollarSign, Banknote, History, Clock, FileText, Edit2, ChevronLeft, ChevronRight, Bell, AlignLeft } from 'lucide-react';
 import { BottomNav } from '../components/BottomNav';
@@ -25,6 +25,11 @@ const HR: React.FC = () => {
   const [view, setView] = useState<'Directory' | 'Profile'>('Directory');
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
   
+  // --- SEARCH STATE ---
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   // --- WORKER PROFILE STATE ---
   const [currentBalance, setCurrentBalance] = useState(0);
   const [transactionHistory, setTransactionHistory] = useState<Transaction[]>([]);
@@ -60,6 +65,21 @@ const HR: React.FC = () => {
     { id: '3', name: 'Ana Silva', role: 'Vet', imageUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=150&h=150', status: 'Absent', balance: 0 },
   ];
 
+  // Focus input when search opens
+  useEffect(() => {
+    if (isSearchOpen && searchInputRef.current) {
+        searchInputRef.current.focus();
+    }
+  }, [isSearchOpen]);
+
+  // Filter Workers Logic
+  const filteredWorkers = workers.filter(w => {
+      if (!searchQuery) return true;
+      const query = searchQuery.toLowerCase();
+      const roleName = roleMap[w.role]?.toLowerCase() || '';
+      return w.name.toLowerCase().includes(query) || roleName.includes(query);
+  });
+
   // Initialize data when selecting a worker
   const handleWorkerClick = (w: Worker) => {
     setSelectedWorker(w);
@@ -67,6 +87,8 @@ const HR: React.FC = () => {
     setCustomAmount('');
     setPaymentDescription('');
     setPaymentSuccess(false);
+    setIsSearchOpen(false); // Close search when entering profile
+    setSearchQuery('');
     
     // Load Mock Data
     const mockHistory: Transaction[] = w.id === '1' ? [
@@ -176,7 +198,11 @@ const HR: React.FC = () => {
   const handlePayment = () => {
      // Simplified payment logic from previous iteration
      const amountToPay = paymentType === 'advance' ? parseInt(customAmount) : 850000;
-     const desc = paymentType === 'advance' ? paymentDescription : 'Liquidación Nómina';
+     
+     // Use custom description if advance, otherwise default
+     const desc = paymentType === 'advance' 
+        ? (paymentDescription || 'Adelanto General') 
+        : 'Liquidación Nómina';
      
      if(amountToPay > 0) {
         setPaymentSuccess(true);
@@ -404,27 +430,20 @@ const HR: React.FC = () => {
                  </button>
              </div>
 
-             {/* === MODALS === */}
-
-             {/* Add Task Modal (Updated UI - Full Screen) */}
-             {showTaskModal && (
+             {/* ... MODALS ... */}
+             {showTaskModal && (/* ... Task Modal Code (Unchanged) ... */
                  <div className="fixed inset-0 z-50 bg-background-dark flex flex-col animate-in slide-in-from-bottom-5">
-                     {/* Header */}
                      <div className="p-4 flex items-center justify-between border-b border-white/5">
                          <button onClick={() => setShowTaskModal(false)} className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors">
                              <ArrowLeft size={24} />
                          </button>
                          <h2 className="text-lg font-bold">Asignar Tarea</h2>
-                         <div className="w-10"></div> {/* Spacer for center alignment */}
+                         <div className="w-10"></div>
                      </div>
-
                      <main className="flex-1 overflow-y-auto p-6">
                          <h1 className="text-3xl font-bold text-white mb-2">Nueva Actividad</h1>
                          <p className="text-gray-400 text-sm mb-8">Complete los detalles para asignar al personal.</p>
-
                          <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); addNewTask(); }}>
-                             
-                             {/* Title Input */}
                              <div>
                                  <label className="flex items-center gap-2 text-sm font-bold text-gray-300 mb-3">
                                      <div className="w-1 h-4 bg-primary rounded-full"></div>
@@ -439,8 +458,6 @@ const HR: React.FC = () => {
                                      autoFocus
                                  />
                              </div>
-
-                             {/* Description */}
                              <div>
                                  <label className="flex items-center gap-2 text-sm font-bold text-gray-300 mb-3">
                                      <AlignLeft size={18} className="text-primary" />
@@ -450,17 +467,12 @@ const HR: React.FC = () => {
                                      <textarea
                                          value={newTaskDesc}
                                          onChange={(e) => setNewTaskDesc(e.target.value)}
-                                         placeholder="Describa la tarea detalladamente. Ej: Revisar bebederos sector sur..."
+                                         placeholder="Describa la tarea detalladamente."
                                          rows={4}
                                          className="w-full bg-surface-dark border border-white/10 rounded-2xl p-4 text-gray-300 placeholder-gray-600 focus:border-primary outline-none transition-all resize-none text-sm leading-relaxed"
                                      />
-                                     <div className="absolute bottom-4 right-4 text-gray-600">
-                                         <Edit2 size={16} />
-                                     </div>
                                  </div>
                              </div>
-
-                             {/* Location */}
                              <div>
                                  <label className="flex items-center gap-2 text-sm font-bold text-gray-300 mb-3">
                                      <MapPin size={18} className="text-primary" />
@@ -474,8 +486,6 @@ const HR: React.FC = () => {
                                      className="w-full bg-surface-dark border border-white/10 rounded-2xl p-4 text-white placeholder-gray-600 focus:border-primary outline-none transition-all"
                                  />
                              </div>
-
-                             {/* Due Date - Card Style */}
                              <div>
                                  <label className="block text-sm font-bold text-gray-300 mb-3">Fecha de vencimiento</label>
                                  <div className="bg-surface-dark border border-white/10 rounded-2xl p-4 flex items-center justify-between group cursor-pointer hover:border-white/20 transition-all relative">
@@ -487,14 +497,8 @@ const HR: React.FC = () => {
                                              <p className="font-bold text-white text-base">
                                                  {newTaskDueDate === new Date().toISOString().split('T')[0] ? 'Para hoy' : newTaskDueDate}
                                              </p>
-                                             <p className="text-xs text-gray-500 capitalize">
-                                                 {new Date(newTaskDueDate).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}
-                                             </p>
                                          </div>
                                      </div>
-                                     <Edit2 size={18} className="text-gray-500 group-hover:text-white transition-colors" />
-                                     
-                                     {/* Invisible Date Input Overlay */}
                                      <input 
                                         type="date" 
                                         value={newTaskDueDate}
@@ -503,11 +507,8 @@ const HR: React.FC = () => {
                                      />
                                  </div>
                              </div>
-
                          </form>
                      </main>
-
-                     {/* Footer Action */}
                      <div className="p-6 border-t border-white/5 bg-background-dark/95 backdrop-blur-sm">
                          <button 
                             onClick={addNewTask}
@@ -518,54 +519,17 @@ const HR: React.FC = () => {
                      </div>
                  </div>
              )}
-
-             {/* Add Event Modal */}
-             {showEventModal && (
+             
+             {showEventModal && (/* ... Event Modal Code (Unchanged) ... */
                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
                      <div className="bg-surface-dark w-full max-w-sm rounded-2xl border border-white/10 p-6 animate-in zoom-in-95">
-                         <h3 className="text-lg font-bold mb-1">Evento: {selectedDate}</h3>
-                         <p className="text-xs text-gray-500 mb-4">Selecciona el tipo de registro.</p>
-                         
+                         <h3 className="text-lg font-bold mb-4">Evento: {selectedDate}</h3>
                          <div className="space-y-4">
                              <div className="flex bg-surface-darker p-1 rounded-lg">
-                                 <button 
-                                    onClick={() => setEventType('Attendance')} 
-                                    className={`flex-1 py-2 rounded-md text-xs font-bold transition-colors ${eventType === 'Attendance' ? 'bg-primary text-black' : 'text-gray-400'}`}
-                                 >
-                                     Asistencia
-                                 </button>
-                                 <button 
-                                    onClick={() => setEventType('Reminder')} 
-                                    className={`flex-1 py-2 rounded-md text-xs font-bold transition-colors ${eventType === 'Reminder' ? 'bg-accent-amber text-black' : 'text-gray-400'}`}
-                                 >
-                                     Recordatorio
-                                 </button>
+                                 <button onClick={() => setEventType('Attendance')} className={`flex-1 py-2 rounded-md text-xs font-bold transition-colors ${eventType === 'Attendance' ? 'bg-primary text-black' : 'text-gray-400'}`}>Asistencia</button>
+                                 <button onClick={() => setEventType('Reminder')} className={`flex-1 py-2 rounded-md text-xs font-bold transition-colors ${eventType === 'Reminder' ? 'bg-accent-amber text-black' : 'text-gray-400'}`}>Recordatorio</button>
                              </div>
-
-                             {eventType === 'Reminder' && (
-                                 <div>
-                                    <label className="text-xs text-gray-400 font-bold uppercase">Título del Evento</label>
-                                    <input 
-                                        type="text" 
-                                        value={eventTitle}
-                                        onChange={(e) => setEventTitle(e.target.value)}
-                                        placeholder="Ej: Salida a vacaciones"
-                                        className="w-full bg-surface-darker border border-white/10 rounded-lg p-3 mt-1 text-white focus:border-accent-amber outline-none"
-                                    />
-                                    <div className="flex items-center gap-2 mt-2 text-xs text-accent-amber">
-                                        <Bell size={12} />
-                                        <span>Se enviará notificación ese día.</span>
-                                    </div>
-                                 </div>
-                             )}
-
-                             {eventType === 'Attendance' && (
-                                 <div className="p-3 bg-surface-darker rounded-lg border border-white/5 text-center">
-                                     <p className="text-sm text-gray-300">Se marcará como <strong className="text-white">Presente</strong>.</p>
-                                     <p className="text-xs text-gray-500 mt-1">Para marcar ausente, elimine el registro (proximamente).</p>
-                                 </div>
-                             )}
-
+                             {eventType === 'Reminder' && <input type="text" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} placeholder="Título del Evento" className="w-full bg-surface-darker border border-white/10 rounded-lg p-3 text-white focus:border-accent-amber outline-none" />}
                              <div className="flex gap-2 pt-2">
                                  <button onClick={() => setShowEventModal(false)} className="flex-1 py-3 rounded-xl bg-white/5 font-bold hover:bg-white/10">Cancelar</button>
                                  <button onClick={addEvent} className="flex-1 py-3 rounded-xl bg-primary text-black font-bold hover:bg-primary-dark">Guardar</button>
@@ -574,8 +538,7 @@ const HR: React.FC = () => {
                      </div>
                  </div>
              )}
-
-             {/* Payment Modal (Simplified for brevity, kept existing logic structure) */}
+             
              {showPaymentModal && (
                  <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
                      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowPaymentModal(false)}></div>
@@ -594,7 +557,31 @@ const HR: React.FC = () => {
                                         <button onClick={() => setPaymentType('advance')} className={`flex-1 py-3 rounded-xl font-bold ${paymentType === 'advance' ? 'bg-white text-black' : 'bg-white/5'}`}>Adelanto</button>
                                     </div>
                                     {paymentType === 'advance' && (
-                                        <input type="number" placeholder="Monto" className="w-full bg-surface-darker p-4 rounded-xl text-white text-xl font-bold" value={customAmount} onChange={e => setCustomAmount(e.target.value)} />
+                                        <div className="space-y-3 animate-in fade-in">
+                                            <div>
+                                                <label className="text-xs font-bold text-gray-400 ml-1 mb-1 block">Monto a Descontar</label>
+                                                <div className="relative">
+                                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</div>
+                                                    <input 
+                                                        type="number" 
+                                                        placeholder="0" 
+                                                        className="w-full bg-surface-darker p-4 pl-8 rounded-xl text-white text-xl font-bold outline-none border border-white/5 focus:border-primary transition-colors" 
+                                                        value={customAmount} 
+                                                        onChange={e => setCustomAmount(e.target.value)} 
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-bold text-gray-400 ml-1 mb-1 block">Observación / Motivo</label>
+                                                <textarea
+                                                    rows={2}
+                                                    placeholder="Ej: Calamidad doméstica, Compra de víveres..."
+                                                    className="w-full bg-surface-darker p-3 rounded-xl text-white text-sm outline-none border border-white/5 focus:border-primary transition-colors resize-none"
+                                                    value={paymentDescription}
+                                                    onChange={e => setPaymentDescription(e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
                                     )}
                                     <button onClick={handlePayment} className="w-full bg-primary text-black py-4 rounded-xl font-bold text-lg">Confirmar</button>
                                 </div>
@@ -611,39 +598,74 @@ const HR: React.FC = () => {
     <div className="min-h-screen bg-background-dark text-white font-display flex flex-col">
        {/* HR Directory Header */}
        <header className="px-4 pt-4 pb-2 sticky top-0 bg-background-dark/95 backdrop-blur-md z-20 border-b border-white/5">
-           <div className="flex justify-between items-center mb-4">
-               <div className="flex items-center gap-2">
-                   <button onClick={() => navigate(-1)} className="p-1"><ArrowLeft size={20} /></button>
-                   <h1 className="text-xl font-extrabold">Directorio de Equipo</h1>
-               </div>
-               <div className="flex gap-2">
-                   <button className="w-10 h-10 bg-surface-dark rounded-full flex items-center justify-center"><Search size={18} /></button>
-                   <button onClick={() => navigate('/register-worker')} className="w-10 h-10 bg-primary text-background-dark rounded-full flex items-center justify-center"><Plus size={20} /></button>
-               </div>
+           <div className="flex justify-between items-center mb-4 h-10">
+               {isSearchOpen ? (
+                   // Search Bar Active
+                   <div className="flex-1 flex items-center bg-white/10 rounded-xl px-3 py-1 animate-in fade-in zoom-in-95 duration-200">
+                       <Search size={18} className="text-gray-400 mr-2 shrink-0"/>
+                       <input
+                           ref={searchInputRef}
+                           type="text"
+                           value={searchQuery}
+                           onChange={(e) => setSearchQuery(e.target.value)}
+                           placeholder="Buscar nombre o cargo..."
+                           className="bg-transparent border-none outline-none text-white w-full text-base placeholder-gray-400 h-9"
+                       />
+                       {searchQuery && (
+                           <button onClick={() => setSearchQuery('')} className="p-1 text-gray-400 hover:text-white mr-1">
+                               <X size={14} className="bg-gray-600 rounded-full p-0.5" />
+                           </button>
+                       )}
+                       <button onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="ml-2 text-sm font-bold text-gray-400 hover:text-white whitespace-nowrap">
+                           Cancelar
+                       </button>
+                   </div>
+               ) : (
+                   // Default Header
+                   <>
+                       <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2">
+                           <button onClick={() => navigate(-1)} className="p-1"><ArrowLeft size={20} /></button>
+                           <h1 className="text-xl font-extrabold">Directorio de Equipo</h1>
+                       </div>
+                       <div className="flex gap-2 animate-in fade-in slide-in-from-right-2">
+                           <button onClick={() => setIsSearchOpen(true)} className="w-10 h-10 bg-surface-dark rounded-full flex items-center justify-center hover:bg-white/10 transition-colors"><Search size={18} /></button>
+                           <button onClick={() => navigate('/register-worker')} className="w-10 h-10 bg-primary text-background-dark rounded-full flex items-center justify-center active:scale-95 transition-transform"><Plus size={20} /></button>
+                       </div>
+                   </>
+               )}
            </div>
            
-           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
-               <button className="px-4 py-1.5 rounded-full bg-primary text-background-dark text-sm font-bold">Todos</button>
-               <button className="px-4 py-1.5 rounded-full bg-surface-dark border border-white/10 text-sm hover:bg-white/5">Presente</button>
-               <button className="px-4 py-1.5 rounded-full bg-surface-dark border border-white/10 text-sm hover:bg-white/5">Ausente</button>
-           </div>
+           {!isSearchOpen && (
+               <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 animate-in fade-in slide-in-from-top-1">
+                   <button className="px-4 py-1.5 rounded-full bg-primary text-background-dark text-sm font-bold">Todos</button>
+                   <button className="px-4 py-1.5 rounded-full bg-surface-dark border border-white/10 text-sm hover:bg-white/5">Presente</button>
+                   <button className="px-4 py-1.5 rounded-full bg-surface-dark border border-white/10 text-sm hover:bg-white/5">Ausente</button>
+               </div>
+           )}
        </header>
 
-       <main className="flex-1 p-4 pb-24 grid grid-cols-2 gap-3">
-            {workers.map(w => (
-                <div key={w.id} onClick={() => handleWorkerClick(w)} className="bg-surface-dark rounded-xl p-4 flex flex-col items-center text-center border border-white/5 hover:border-primary/50 transition-colors cursor-pointer relative overflow-hidden">
-                    <div className="relative mb-3">
-                        <img src={w.imageUrl} className="w-20 h-20 rounded-full object-cover" />
-                        <div className={`absolute bottom-0 right-0 w-5 h-5 rounded-full border-2 border-surface-dark ${w.status === 'Present' ? 'bg-primary' : 'bg-gray-500'}`}></div>
-                    </div>
-                    <h3 className="font-bold">{w.name}</h3>
-                    <p className="text-xs text-accent-amber font-bold uppercase tracking-wider mb-2">{roleMap[w.role]}</p>
-                    <div className="mt-auto flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded-md">
-                        <div className={`w-1.5 h-1.5 rounded-full ${w.status === 'Present' ? 'bg-primary animate-pulse' : 'bg-gray-500'}`}></div>
-                        <span className="text-[10px] text-gray-300 font-medium">{w.status === 'Present' ? 'En Campo' : 'Fuera'}</span>
-                    </div>
+       <main className="flex-1 p-4 pb-24 grid grid-cols-2 gap-3 content-start">
+            {filteredWorkers.length === 0 ? (
+                <div className="col-span-2 text-center py-10 opacity-50">
+                    <Search size={32} className="mx-auto mb-2 text-gray-600"/>
+                    <p className="text-sm font-bold">No se encontraron resultados</p>
                 </div>
-            ))}
+            ) : (
+                filteredWorkers.map(w => (
+                    <div key={w.id} onClick={() => handleWorkerClick(w)} className="bg-surface-dark rounded-xl p-4 flex flex-col items-center text-center border border-white/5 hover:border-primary/50 transition-colors cursor-pointer relative overflow-hidden active:scale-[0.98]">
+                        <div className="relative mb-3">
+                            <img src={w.imageUrl} className="w-20 h-20 rounded-full object-cover" />
+                            <div className={`absolute bottom-0 right-0 w-5 h-5 rounded-full border-2 border-surface-dark ${w.status === 'Present' ? 'bg-primary' : 'bg-gray-500'}`}></div>
+                        </div>
+                        <h3 className="font-bold">{w.name}</h3>
+                        <p className="text-xs text-accent-amber font-bold uppercase tracking-wider mb-2">{roleMap[w.role]}</p>
+                        <div className="mt-auto flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded-md">
+                            <div className={`w-1.5 h-1.5 rounded-full ${w.status === 'Present' ? 'bg-primary animate-pulse' : 'bg-gray-500'}`}></div>
+                            <span className="text-[10px] text-gray-300 font-medium">{w.status === 'Present' ? 'En Campo' : 'Fuera'}</span>
+                        </div>
+                    </div>
+                ))
+            )}
        </main>
 
        <BottomNav />

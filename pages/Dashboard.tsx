@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, MoreHorizontal, Droplets, TrendingUp, Users, Plus, ArrowRight, Gauge, Bell, AlertTriangle, CheckCircle2, Info, X, BrainCircuit, ClipboardList } from 'lucide-react';
+import { MapPin, MoreHorizontal, Droplets, TrendingUp, Users, Plus, ArrowRight, Gauge, Bell, AlertTriangle, CheckCircle2, Info, X, BrainCircuit, ClipboardList, Disc } from 'lucide-react';
 import { BottomNav } from '../components/BottomNav';
 import { farmsData, allBovines, mockNotifications } from '../mockData';
 
@@ -14,13 +15,34 @@ const Dashboard: React.FC = () => {
   const [notifications, setNotifications] = useState(mockNotifications);
   const [showNotifications, setShowNotifications] = useState(false);
 
-  // Helper to count active animals per farm
-  const getFarmCount = (farmId: string) => {
-    return allBovines.filter(b => b.farmId === farmId && b.status === 'Active').length;
+  // Load Farms (from LocalStorage or Mock)
+  const [farms] = useState(() => {
+      const savedFarms = localStorage.getItem('bovine_farms');
+      if (savedFarms) return JSON.parse(savedFarms);
+      localStorage.setItem('bovine_farms', JSON.stringify(farmsData));
+      return farmsData;
+  });
+
+  // Load Inventory (from LocalStorage or Mock) for Global Counts
+  const [inventory, setInventory] = useState<any[]>([]);
+  useEffect(() => {
+      const savedBovines = localStorage.getItem('bovine_inventory');
+      if (savedBovines) {
+          setInventory(JSON.parse(savedBovines));
+      } else {
+          localStorage.setItem('bovine_inventory', JSON.stringify(allBovines));
+          setInventory(allBovines);
+      }
+  }, []);
+
+  // Helper to count active animals per farm using loaded inventory
+  const getFarmCount = (farmId: string, initialHead: number = 0) => {
+    const bovineCount = inventory.filter(b => b.farmId === farmId && b.status === 'Active').length;
+    return Math.max(bovineCount, initialHead || 0);
   };
 
-  // Calculate global total
-  const totalAnimals = allBovines.filter(b => b.status === 'Active').length;
+  // Calculate global total using loaded inventory
+  const totalAnimals = inventory.filter(b => b.status === 'Active').length + farms.reduce((acc: number, f: any) => acc + (f.totalHead || 0), 0);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -98,6 +120,7 @@ const Dashboard: React.FC = () => {
                                     onClick={() => markAsRead(n.id)}
                                     className={`p-4 border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer group relative ${!n.read ? 'bg-primary/5' : ''}`}
                                 >
+                                    {/* Notif Content */}
                                     <div className="flex gap-3">
                                         <div className={`mt-1 shrink-0 ${
                                             n.type === 'alert' ? 'text-red-400' : 
@@ -113,7 +136,6 @@ const Dashboard: React.FC = () => {
                                             </div>
                                             <p className={`text-xs leading-relaxed ${!n.read ? 'text-gray-300' : 'text-gray-500'}`}>{n.message}</p>
                                         </div>
-                                        {/* Delete Action */}
                                         <button 
                                             onClick={(e) => deleteNotification(e, n.id)}
                                             className="absolute top-2 right-2 p-1 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -145,8 +167,8 @@ const Dashboard: React.FC = () => {
           </div>
           
           <div className="flex overflow-x-auto gap-4 px-5 pb-4 no-scrollbar snap-x snap-mandatory">
-            {farmsData.map((farm) => {
-              const count = getFarmCount(farm.id);
+            {farms.map((farm: any) => {
+              const count = getFarmCount(farm.id, farm.totalHead);
               return (
                 <div key={farm.id} onClick={() => navigate(`/inventory?farmId=${farm.id}`)} className="relative flex-none w-[85%] max-w-[340px] aspect-[4/5] rounded-3xl overflow-hidden snap-center group shadow-xl bg-card-dark border border-white/10 cursor-pointer">
                     <img src={farm.imageUrl} alt={farm.name} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
@@ -209,7 +231,7 @@ const Dashboard: React.FC = () => {
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2 text-accent-amber mb-1">
                   <Droplets size={16} />
-                  <span className="text-xs font-bold uppercase tracking-wider">Leche Hoy</span>
+                  <span className="text-xs font-bold uppercase tracking-wider">Producción Total</span>
                 </div>
                 <span className="text-4xl font-extrabold text-white tracking-tight">12,500 <span className="text-xl text-gray-500 font-bold">L</span></span>
                 <div className="flex items-center gap-1 text-xs text-primary font-medium mt-1">
@@ -222,9 +244,12 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Population KPI */}
-            <div className="bg-surface-dark rounded-2xl p-4 shadow-sm border border-white/5 flex flex-col gap-3">
-              <div className="bg-surface-darker w-10 h-10 rounded-lg flex items-center justify-center text-white">
+            {/* Population KPI (Clickable) */}
+            <div 
+              onClick={() => navigate('/inventory')} 
+              className="bg-surface-dark rounded-2xl p-4 shadow-sm border border-white/5 flex flex-col gap-3 cursor-pointer hover:border-primary/50 transition-colors group"
+            >
+              <div className="bg-surface-darker w-10 h-10 rounded-lg flex items-center justify-center text-white group-hover:bg-primary group-hover:text-black transition-colors">
                 <Gauge size={20} />
               </div>
               <div>
@@ -263,6 +288,17 @@ const Dashboard: React.FC = () => {
               <div className="text-left flex-1">
                 <h3 className="font-bold text-white">Gestionar Inventario</h3>
                 <p className="text-xs text-gray-500">Ver listado global de animales</p>
+              </div>
+              <ArrowRight size={20} className="text-gray-400" />
+            </button>
+
+            <button onClick={() => navigate('/add-cheese')} className="flex items-center gap-4 bg-surface-dark p-4 rounded-xl border border-white/5 active:scale-[0.98] transition-all group hover:border-white/10">
+              <div className="bg-yellow-500/10 text-yellow-400 p-2 rounded-lg group-hover:bg-yellow-500/20 transition-colors">
+                <Disc size={24} />
+              </div>
+              <div className="text-left flex-1">
+                <h3 className="font-bold text-white">Registrar Queso</h3>
+                <p className="text-xs text-gray-500">Producción de derivados</p>
               </div>
               <ArrowRight size={20} className="text-gray-400" />
             </button>

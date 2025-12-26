@@ -33,19 +33,19 @@ export const allBovines: Bovine[] = [
   {
     id: '1', tag: '5783-2', breed: 'Holstein', age: '3 Años', weight: 450,
     imageUrl: 'https://images.unsplash.com/photo-1546445317-29f4545e9d53?q=80&w=2500&auto=format&fit=crop',
-    status: 'Active', category: 'Cow', healthStatus: 'Healthy', reproductiveStatus: 'Pregnant', isLactating: true,
+    status: 'Active', category: 'Cow', gender: 'Female', healthStatus: 'Healthy', reproductiveStatus: 'Pregnant', isLactating: true,
     lastWeighingDate: 'Hoy 06:30', farmId: '1'
   },
   {
       id: '3', tag: '1102-C', breed: 'Angus', age: '2 Años', weight: 380,
       imageUrl: 'https://images.unsplash.com/photo-1541625602330-2277a4c46182?q=80&w=1770&auto=format&fit=crop',
-      status: 'Active', category: 'Heifer', healthStatus: 'Healthy', reproductiveStatus: 'Open', isLactating: false,
+      status: 'Active', category: 'Heifer', gender: 'Female', healthStatus: 'Healthy', reproductiveStatus: 'Open', isLactating: false,
       lastWeighingDate: 'Oct 12', farmId: '1'
   },
   {
     id: '5', tag: '8821-B', breed: 'Jersey', age: '4 Años', weight: 410,
     imageUrl: 'https://images.unsplash.com/photo-1500595046743-cd271d694d30?q=80&w=2074&auto=format&fit=crop',
-    status: 'Active', category: 'Cow', healthStatus: 'Healthy', reproductiveStatus: 'Open', isLactating: true,
+    status: 'Active', category: 'Cow', gender: 'Female', healthStatus: 'Healthy', reproductiveStatus: 'Open', isLactating: true,
     lastWeighingDate: 'Ayer 10:00', farmId: '1'
   },
 
@@ -53,13 +53,13 @@ export const allBovines: Bovine[] = [
   {
     id: '2', tag: '9901-A', breed: 'Brahman', age: '4 Años', weight: 520,
     imageUrl: 'https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?q=80&w=2670&auto=format&fit=crop',
-    status: 'Active', category: 'Cow', healthStatus: 'Sick', reproductiveStatus: 'Open', isLactating: false,
+    status: 'Active', category: 'Cow', gender: 'Female', healthStatus: 'Sick', reproductiveStatus: 'Open', isLactating: false,
     lastWeighingDate: 'Ayer 14:00', farmId: '2'
   },
   {
       id: '4', tag: '2205-X', breed: 'Gyr', age: '5 Años', weight: 490,
       imageUrl: 'https://images.unsplash.com/photo-1516467508483-a72120615613?q=80&w=1780&auto=format&fit=crop',
-      status: 'Active', category: 'Cow', healthStatus: 'Healthy', reproductiveStatus: 'Pregnant', isLactating: true,
+      status: 'Active', category: 'Cow', gender: 'Female', healthStatus: 'Healthy', reproductiveStatus: 'Pregnant', isLactating: true,
       lastWeighingDate: 'Oct 10', farmId: '2'
   },
 ];
@@ -158,4 +158,50 @@ export const marketListings: MarketListing[] = [
     createdAt: 'Ayer',
     isFavorite: false
   }
+];
+
+// NEW MOCK DATA FOR MARKET INBOX & ALERTS
+export const marketMessages = [
+    {
+        id: 'msg1',
+        sender: 'Pedro Gómez',
+        item: 'Toro Brahman Rojo',
+        message: 'Buenas tardes, le ofrezco 11 millones en efectivo.',
+        time: '10:30 AM',
+        unread: true,
+        avatar: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&w=100&h=100'
+    },
+    {
+        id: 'msg2',
+        sender: 'Agropecuaria La Cima',
+        item: 'Lote 10 Vacas',
+        message: '¿Tiene certificado de preñez de todas?',
+        time: 'Ayer',
+        unread: false,
+        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&h=100'
+    }
+];
+
+export const marketLikes = [
+    {
+        id: 'like1',
+        user: 'Carlos Ruiz',
+        item: 'Toro Brahman Rojo',
+        time: 'Hace 5 min',
+        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=100&h=100'
+    },
+    {
+        id: 'like2',
+        user: 'Maria Lopez',
+        item: 'Caballo Cuarto de Milla',
+        time: 'Hace 1 hora',
+        avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=100&h=100'
+    },
+    {
+        id: 'like3',
+        user: 'Finca El Porvenir',
+        item: 'Toro Brahman Rojo',
+        time: 'Hace 3 horas',
+        avatar: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?auto=format&fit=crop&w=100&h=100'
+    }
 ];

@@ -16,7 +16,8 @@ export interface Bovine {
   weight: number;
   imageUrl: string;
   status: 'Active' | 'Sold' | 'Deceased';
-  category: 'Cow' | 'Heifer' | 'Calf' | 'Bull';
+  category: 'Cow' | 'Heifer' | 'Calf' | 'Bull' | 'Vaca' | 'Novilla' | 'Ternero' | 'Toro';
+  gender: 'Male' | 'Female';
   healthStatus: 'Healthy' | 'Sick';
   reproductiveStatus: 'Open' | 'Pregnant';
   isLactating: boolean;

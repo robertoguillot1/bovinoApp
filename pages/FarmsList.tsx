@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, MapPin, Gauge, MoreVertical, Search, Edit2, Trash2, Droplets } from 'lucide-react';
-import { farmsData, allBovines } from '../mockData'; // Import shared data
+import { farmsData, allBovines } from '../mockData';
 
 const FarmsList: React.FC = () => {
   const navigate = useNavigate();
@@ -9,33 +10,59 @@ const FarmsList: React.FC = () => {
   // State for the menu
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
-  // Initialize with centralized data
-  const [farms, setFarms] = useState(farmsData.map(f => ({
-    ...f,
-    // Add dummy milk production logic if not present in base type, or handle it
-    milkProduction: f.id === '1' ? 12500 : f.id === '2' ? 5400 : 0 
-  })));
+  // Initialize with LocalStorage or fallback to Mock Data
+  const [farms, setFarms] = useState<any[]>(() => {
+      const saved = localStorage.getItem('bovine_farms');
+      if (saved) return JSON.parse(saved);
+      const mocks = farmsData.map(f => ({
+        ...f,
+        milkProduction: f.id === '1' ? 12500 : f.id === '2' ? 5400 : 0 
+      }));
+      localStorage.setItem('bovine_farms', JSON.stringify(mocks));
+      return mocks;
+  });
+
+  // Load Inventory for accurate counts
+  const [inventory, setInventory] = useState<any[]>([]);
+  useEffect(() => {
+      const savedBovines = localStorage.getItem('bovine_inventory');
+      if (savedBovines) {
+          setInventory(JSON.parse(savedBovines));
+      } else {
+          localStorage.setItem('bovine_inventory', JSON.stringify(allBovines));
+          setInventory(allBovines);
+      }
+  }, []);
+
+  // Sync state changes to localStorage (e.g. deletions)
+  useEffect(() => {
+      if (farms.length > 0) {
+          localStorage.setItem('bovine_farms', JSON.stringify(farms));
+      }
+  }, [farms]);
 
   // Helper to calculate active animals
-  const getFarmCount = (farmId: string) => {
-    return allBovines.filter(b => b.farmId === farmId && b.status === 'Active').length;
+  const getFarmCount = (farmId: string, initialHead: number = 0) => {
+    const bovineCount = inventory.filter(b => b.farmId === farmId && b.status === 'Active').length;
+    return Math.max(bovineCount, initialHead || 0);
   };
 
   const toggleMenu = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation(); // Prevent navigation to inventory
+    e.stopPropagation(); 
     setActiveMenuId(activeMenuId === id ? null : id);
   };
 
   const handleDelete = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (window.confirm('¿Estás seguro de que deseas eliminar esta finca? Esta acción no se puede deshacer.')) {
-        setFarms(farms.filter(f => f.id !== id));
+        setFarms(prev => prev.filter(f => f.id !== id));
         setActiveMenuId(null);
     }
   };
 
   const handleEdit = (e: React.MouseEvent, id: string) => {
       e.stopPropagation();
+      // Logic for edit could go here (navigate to edit page with ID)
       navigate('/register-farm'); 
       setActiveMenuId(null);
   };
@@ -43,7 +70,7 @@ const FarmsList: React.FC = () => {
   return (
     <div 
         className="bg-background-dark min-h-screen text-white font-display flex flex-col"
-        onClick={() => setActiveMenuId(null)} // Close menu when clicking background
+        onClick={() => setActiveMenuId(null)} 
     >
       <header className="p-4 pt-8 flex items-center justify-between sticky top-0 bg-background-dark/95 backdrop-blur-md z-20 border-b border-white/5">
         <div className="flex items-center gap-4">
@@ -71,7 +98,7 @@ const FarmsList: React.FC = () => {
 
       <main className="flex-1 overflow-y-auto p-4 pb-20 space-y-4 mt-2">
         {farms.map((farm) => {
-            const count = getFarmCount(farm.id);
+            const count = getFarmCount(farm.id, farm.totalHead);
             return (
                 <div 
                     key={farm.id} 
@@ -137,7 +164,7 @@ const FarmsList: React.FC = () => {
                                     <p className="text-sm font-bold text-white">{count} <span className="text-xs font-normal text-gray-500">Cabezas</span></p>
                                 </div>
                             </div>
-                            {farm.milkProduction > 0 && (
+                            {(farm.milkProduction || 0) > 0 && (
                                 <div className="flex items-center gap-3 flex-1 border-l border-white/5 pl-4">
                                     <div className="w-10 h-10 rounded-lg bg-surface-darker flex items-center justify-center text-accent-amber border border-white/5">
                                         <Droplets size={20} />

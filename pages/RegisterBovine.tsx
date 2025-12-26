@@ -1,34 +1,81 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Camera, Check, Dna, Calendar, Weight, Tag, Ruler, MapPin, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Camera, Check, Dna, Calendar, Weight, Tag, MapPin, ChevronDown } from 'lucide-react';
+import { farmsData, allBovines } from '../mockData';
 
 const RegisterBovine: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   
+  // Load Farms from LS to allow selection of created farms
+  const [availableFarms, setAvailableFarms] = useState<any[]>([]);
+
+  useEffect(() => {
+      const savedFarms = localStorage.getItem('bovine_farms');
+      if (savedFarms) {
+          setAvailableFarms(JSON.parse(savedFarms));
+      } else {
+          setAvailableFarms(farmsData);
+      }
+  }, []);
+  
   // Form State
   const [selectedFarm, setSelectedFarm] = useState('');
   const [tag, setTag] = useState('');
+  const [breed, setBreed] = useState('');
+  const [weight, setWeight] = useState('');
+  const [birthDate, setBirthDate] = useState('');
   const [category, setCategory] = useState('Vaca');
   const [purpose, setPurpose] = useState('Leche');
-
-  // Mock Farms Data (In a real app, this comes from context or API)
-  const farms = [
-    { id: '1', name: 'Hacienda La Esperanza' },
-    { id: '2', name: 'Finca El Roble' },
-    { id: '3', name: 'Rancho Santa Fe' }
-  ];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFarm || !tag) return;
 
     setLoading(true);
+
+    const newBovine = {
+        id: Date.now().toString(),
+        tag: tag,
+        breed: breed || 'Desconocida',
+        age: birthDate ? calculateAge(birthDate) : 'Recién Ingresado',
+        weight: parseInt(weight) || 0,
+        imageUrl: 'https://images.unsplash.com/photo-1546445317-29f4545e9d53?q=80&w=2500&auto=format&fit=crop', // Placeholder
+        status: 'Active',
+        category: category, // 'Cow', 'Heifer', etc mapped below or direct string
+        gender: category === 'Toro' || category === 'Ternero' ? 'Male' : 'Female',
+        healthStatus: 'Healthy',
+        reproductiveStatus: 'Open',
+        isLactating: category === 'Vaca' && purpose === 'Leche',
+        lastWeighingDate: 'Hoy',
+        farmId: selectedFarm
+    };
+
+    // Load existing inventory or init with mocks
+    const savedBovines = localStorage.getItem('bovine_inventory');
+    let currentInventory = savedBovines ? JSON.parse(savedBovines) : [...allBovines];
+    
+    // Add new bovine
+    const updatedInventory = [newBovine, ...currentInventory];
+    localStorage.setItem('bovine_inventory', JSON.stringify(updatedInventory));
+
     // Simulate API call
     setTimeout(() => {
       setLoading(false);
       navigate('/inventory');
-    }, 1500);
+    }, 1000);
+  };
+
+  const calculateAge = (dateString: string) => {
+      const today = new Date();
+      const birthDate = new Date(dateString);
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const m = today.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+      }
+      return age + ' Años';
   };
 
   return (
@@ -53,7 +100,7 @@ const RegisterBovine: React.FC = () => {
 
           <div className="space-y-5">
             
-            {/* FARM SELECTION (NEW) */}
+            {/* FARM SELECTION (DYNAMIC) */}
             <div className="animate-in fade-in slide-in-from-bottom-2">
                 <label className="block text-sm font-bold text-primary mb-2 ml-1">Finca / Ubicación</label>
                 <div className="relative">
@@ -65,7 +112,7 @@ const RegisterBovine: React.FC = () => {
                         required
                     >
                         <option value="" disabled className="text-gray-500">Seleccionar finca de origen...</option>
-                        {farms.map(farm => (
+                        {availableFarms.map(farm => (
                             <option key={farm.id} value={farm.id} className="bg-surface-dark text-white py-2">
                                 {farm.name}
                             </option>
@@ -103,9 +150,11 @@ const RegisterBovine: React.FC = () => {
                     <div className="relative">
                         <div className="absolute left-4 top-4 text-gray-500"><Dna size={20} /></div>
                         <input 
-                        type="text" 
-                        placeholder="Holstein" 
-                        className="w-full bg-surface-dark border border-white/10 rounded-xl py-4 pl-12 pr-4 text-white placeholder-gray-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                            type="text" 
+                            value={breed}
+                            onChange={(e) => setBreed(e.target.value)}
+                            placeholder="Holstein" 
+                            className="w-full bg-surface-dark border border-white/10 rounded-xl py-4 pl-12 pr-4 text-white placeholder-gray-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                         />
                     </div>
                 </div>
@@ -115,9 +164,11 @@ const RegisterBovine: React.FC = () => {
                     <div className="relative">
                         <div className="absolute left-4 top-4 text-gray-500"><Weight size={20} /></div>
                         <input 
-                        type="number" 
-                        placeholder="0" 
-                        className="w-full bg-surface-dark border border-white/10 rounded-xl py-4 pl-12 pr-4 text-white placeholder-gray-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                            type="number" 
+                            value={weight}
+                            onChange={(e) => setWeight(e.target.value)}
+                            placeholder="0" 
+                            className="w-full bg-surface-dark border border-white/10 rounded-xl py-4 pl-12 pr-4 text-white placeholder-gray-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                         />
                     </div>
                 </div>
@@ -125,11 +176,13 @@ const RegisterBovine: React.FC = () => {
 
             {/* Birth Date */}
             <div>
-                <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">Fecha de Nacimiento / Edad Aprox.</label>
+                <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">Fecha de Nacimiento</label>
                 <div className="relative">
                 <div className="absolute left-4 top-4 text-gray-500"><Calendar size={20} /></div>
                 <input 
                     type="date" 
+                    value={birthDate}
+                    onChange={(e) => setBirthDate(e.target.value)}
                     className="w-full bg-surface-dark border border-white/10 rounded-xl py-4 pl-12 pr-4 text-white placeholder-gray-600 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
                 />
                 </div>

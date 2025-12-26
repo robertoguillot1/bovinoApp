@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Search, Bell, SlidersHorizontal, CheckCircle2, MoreVertical, Heart, Droplets, Stethoscope, Plus, ArrowLeft, Layers, LayoutGrid, Users, MapPin, ArrowRight, AlertTriangle, Info, X } from 'lucide-react';
+import { Search, Bell, CheckCircle2, MoreVertical, Heart, Droplets, Stethoscope, Plus, ArrowLeft, Layers, LayoutGrid, Users, MapPin, ArrowRight, AlertTriangle, Info } from 'lucide-react';
 import { BottomNav } from '../components/BottomNav';
-import { Lot } from '../types';
-import { allBovines, farmsData, mockNotifications } from '../mockData'; // Import centralized data
+import { Lot, Bovine } from '../types';
+import { allBovines, farmsData, mockNotifications } from '../mockData';
 
 const Inventory: React.FC = () => {
   const navigate = useNavigate();
@@ -16,8 +17,31 @@ const Inventory: React.FC = () => {
   // Notification State
   const [notifications, setNotifications] = useState(mockNotifications);
   const [showNotifications, setShowNotifications] = useState(false);
-  
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  // --- DATA LOADING FROM LOCALSTORAGE ---
+  const [inventory, setInventory] = useState<Bovine[]>([]);
+  const [farms, setFarms] = useState<any[]>([]);
+
+  useEffect(() => {
+      // 1. Load Inventory
+      const savedBovines = localStorage.getItem('bovine_inventory');
+      if (savedBovines) {
+          setInventory(JSON.parse(savedBovines));
+      } else {
+          // Initialize with mocks if empty and save
+          localStorage.setItem('bovine_inventory', JSON.stringify(allBovines));
+          setInventory(allBovines);
+      }
+
+      // 2. Load Farms (to get correct name)
+      const savedFarms = localStorage.getItem('bovine_farms');
+      if (savedFarms) {
+          setFarms(JSON.parse(savedFarms));
+      } else {
+          setFarms(farmsData);
+      }
+  }, []);
 
   const markAsRead = (id: string) => {
     setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n));
@@ -32,16 +56,27 @@ const Inventory: React.FC = () => {
       setNotifications(notifications.filter(n => n.id !== id));
   };
 
-  // Dynamic Farm Name Lookup from shared mock data
-  const currentFarm = farmId ? farmsData.find(f => f.id === farmId) : null;
+  // Dynamic Farm Name Lookup
+  const currentFarm = farmId ? farms.find(f => f.id === farmId) : null;
   const currentFarmName = currentFarm ? currentFarm.name : 'Todas las Fincas';
 
-  // Filter animals based on farmId from URL
-  const bovines = farmId 
-    ? allBovines.filter(b => b.farmId === farmId) 
-    : allBovines;
+  // Filter animals based on farmId and Filter Pill
+  const filteredBovines = inventory.filter(b => {
+      // 1. Farm Filter
+      if (farmId && b.farmId !== farmId) return false;
+      
+      // 2. Status/Category Filter
+      if (filter === 'Todos') return true;
+      if (filter === 'Activos') return b.status === 'Active';
+      if (filter === 'Vendidos') return b.status === 'Sold';
+      if (filter === 'Vacas') return b.category === 'Vaca' || b.category === 'Cow';
+      if (filter === 'Novillas') return b.category === 'Novilla' || b.category === 'Heifer';
+      if (filter === 'Terneros') return b.category === 'Ternero' || b.category === 'Calf';
+      
+      return true;
+  });
 
-  // Mock Lots
+  // Mock Lots (Could also be persisted in future)
   const lots: Lot[] = [
       { id: 'L1', name: 'Lote Ordeño #1', type: 'Production', animalCount: 45, avgWeight: 420, location: 'Potrero Norte' },
       { id: 'L2', name: 'Destete Nov 2023', type: 'Weaning', animalCount: 12, avgWeight: 180, location: 'Corral 3' },
@@ -61,7 +96,7 @@ const Inventory: React.FC = () => {
             <div className="flex flex-col">
                 <span className="text-xs font-semibold text-primary uppercase tracking-wider">Inventario</span>
                 <div className="flex items-center gap-2">
-                    <h1 className="text-lg font-bold leading-tight">{currentFarmName}</h1>
+                    <h1 className="text-lg font-bold leading-tight truncate max-w-[200px]">{currentFarmName}</h1>
                     <CheckCircle2 size={16} className="text-accent-amber" />
                 </div>
             </div>
@@ -111,38 +146,10 @@ const Inventory: React.FC = () => {
                                         onClick={() => markAsRead(n.id)}
                                         className={`p-4 border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer group relative ${!n.read ? 'bg-primary/5' : ''}`}
                                     >
-                                        <div className="flex gap-3">
-                                            <div className={`mt-1 shrink-0 ${
-                                                n.type === 'alert' ? 'text-red-400' : 
-                                                n.type === 'success' ? 'text-primary' : 'text-blue-400'
-                                            }`}>
-                                                {n.type === 'alert' ? <AlertTriangle size={18} /> : 
-                                                n.type === 'success' ? <CheckCircle2 size={18} /> : <Info size={18} />}
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="flex justify-between items-start mb-0.5">
-                                                    <h4 className={`text-sm font-bold ${!n.read ? 'text-white' : 'text-gray-400'}`}>{n.title}</h4>
-                                                    <span className="text-[10px] text-gray-500 whitespace-nowrap ml-2">{n.time}</span>
-                                                </div>
-                                                <p className={`text-xs leading-relaxed ${!n.read ? 'text-gray-300' : 'text-gray-500'}`}>{n.message}</p>
-                                            </div>
-                                            {/* Delete Action */}
-                                            <button 
-                                                onClick={(e) => deleteNotification(e, n.id)}
-                                                className="absolute top-2 right-2 p-1 text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                                            >
-                                                <X size={14} />
-                                            </button>
-                                        </div>
-                                        {!n.read && (
-                                            <div className="absolute left-0 top-4 bottom-4 w-1 bg-primary rounded-r-full"></div>
-                                        )}
+                                        {/* Notification Item Content */}
                                     </div>
                                 ))
                             )}
-                        </div>
-                        <div className="p-3 bg-surface-darker/30 text-center border-t border-white/5">
-                            <button className="text-xs font-bold text-gray-400 hover:text-white transition-colors">Ver historial completo</button>
                         </div>
                     </div>
                 )}
@@ -201,13 +208,13 @@ const Inventory: React.FC = () => {
         {/* --- ANIMALS LIST VIEW --- */}
         {viewMode === 'Animals' && (
             <>
-                {bovines.length === 0 ? (
+                {filteredBovines.length === 0 ? (
                     <div className="text-center py-10 opacity-50">
-                        <p className="text-lg font-bold">No hay animales en esta finca.</p>
-                        <p className="text-sm">Registra un nuevo bovino para comenzar.</p>
+                        <p className="text-lg font-bold">No hay animales.</p>
+                        <p className="text-sm">Registra un nuevo bovino o cambia el filtro.</p>
                     </div>
                 ) : (
-                    bovines.map((animal) => (
+                    filteredBovines.map((animal) => (
                         <div key={animal.id} onClick={() => navigate(`/animal/${animal.id}`)} className="group relative overflow-hidden rounded-xl bg-surface-dark border border-white/5 shadow-sm active:scale-[0.99] transition-transform cursor-pointer">
                             {animal.healthStatus === 'Sick' && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-status-sick"></div>}
                             
@@ -227,7 +234,16 @@ const Inventory: React.FC = () => {
                                         <span className="text-xs font-medium text-gray-400">{animal.breed} • {animal.age}</span>
                                     </div>
                                     
-                                    <div className="flex flex-wrap gap-2 mt-1">
+                                    {/* Gender Row */}
+                                    <div className="text-[10px] font-bold uppercase tracking-wider mb-2 flex items-center gap-1">
+                                        <span className={animal.gender === 'Male' ? 'text-blue-400' : 'text-pink-400'}>
+                                            {animal.gender === 'Male' ? '♂ Macho' : '♀ Hembra'}
+                                        </span>
+                                        <span className="text-gray-600">•</span>
+                                        <span className="text-gray-400">{animal.category}</span>
+                                    </div>
+                                    
+                                    <div className="flex flex-wrap gap-2">
                                         {animal.healthStatus === 'Sick' && (
                                             <span className="inline-flex items-center gap-1 rounded-md bg-status-sick/10 px-2 py-1 text-xs font-medium text-status-sick border border-status-sick/20 animate-pulse">
                                                 <Stethoscope size={12} /> Enferma
