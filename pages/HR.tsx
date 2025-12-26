@@ -1,10 +1,10 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, Plus, MapPin, TrendingUp, TrendingDown, Calendar, Wallet, X, Check, DollarSign, Banknote, History, Clock, FileText, Edit2, ChevronLeft, ChevronRight, Bell, AlignLeft } from 'lucide-react';
+import { ArrowLeft, Search, Plus, MapPin, Calendar, Wallet, X, Check, DollarSign, History, Clock, Edit2, ChevronLeft, ChevronRight, AlignLeft, Trash2, Save } from 'lucide-react';
 import { BottomNav } from '../components/BottomNav';
 import { Worker, WorkerTask, WorkerEvent } from '../types';
-import { mockTasks, mockEvents, mockNotifications } from '../mockData';
+import { mockTasks, mockEvents } from '../mockData';
 
 const roleMap: Record<string, string> = {
   'Manager': 'Mayordomo',
@@ -30,6 +30,22 @@ const HR: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // --- DATA STATE (PERSISTED) ---
+  const [workers, setWorkers] = useState<Worker[]>(() => {
+      const saved = localStorage.getItem('hr_workers');
+      if (saved) return JSON.parse(saved);
+      return [
+        { id: '1', name: 'Juan Pérez', role: 'Manager', imageUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150', status: 'Present', balance: 1250000 },
+        { id: '2', name: 'Carlos Ruiz', role: 'Cowboy', imageUrl: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&w=150&h=150', status: 'Present', balance: 800000 },
+        { id: '3', name: 'Ana Silva', role: 'Vet', imageUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=150&h=150', status: 'Absent', balance: 0 },
+      ];
+  });
+
+  // Save workers whenever they change
+  useEffect(() => {
+      localStorage.setItem('hr_workers', JSON.stringify(workers));
+  }, [workers]);
+
   // --- WORKER PROFILE STATE ---
   const [currentBalance, setCurrentBalance] = useState(0);
   const [transactionHistory, setTransactionHistory] = useState<Transaction[]>([]);
@@ -42,6 +58,12 @@ const HR: React.FC = () => {
   const [customAmount, setCustomAmount] = useState('');
   const [paymentDescription, setPaymentDescription] = useState('');
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+
+  // --- EDIT TRANSACTION STATE ---
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+  const [editAmount, setEditAmount] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editDate, setEditDate] = useState('');
 
   // Task Creation
   const [showTaskModal, setShowTaskModal] = useState(false);
@@ -58,12 +80,6 @@ const HR: React.FC = () => {
 
   // Calendar Navigation
   const [currentDate, setCurrentDate] = useState(new Date());
-
-  const workers: Worker[] = [
-    { id: '1', name: 'Juan Pérez', role: 'Manager', imageUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150', status: 'Present', balance: 1250000 },
-    { id: '2', name: 'Carlos Ruiz', role: 'Cowboy', imageUrl: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&w=150&h=150', status: 'Present', balance: 800000 },
-    { id: '3', name: 'Ana Silva', role: 'Vet', imageUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=150&h=150', status: 'Absent', balance: 0 },
-  ];
 
   // Focus input when search opens
   useEffect(() => {
@@ -90,17 +106,37 @@ const HR: React.FC = () => {
     setIsSearchOpen(false); // Close search when entering profile
     setSearchQuery('');
     
-    // Load Mock Data
-    const mockHistory: Transaction[] = w.id === '1' ? [
-        { id: 't1', type: 'advance', amount: 200000, date: '15 Oct, 2023', description: 'Adelanto Efectivo' },
-        { id: 't2', type: 'salary', amount: 1100000, date: '30 Sep, 2023', description: 'Nómina Quincenal' },
-    ] : [];
-    setTransactionHistory(mockHistory);
+    // Load Transactions from LS
+    const allTransactions = JSON.parse(localStorage.getItem('hr_transactions') || '{}');
+    const workerTransactions = allTransactions[w.id];
+    
+    if (workerTransactions) {
+        setTransactionHistory(workerTransactions);
+    } else {
+        // Init Mock if empty
+        const mockHistory: Transaction[] = w.id === '1' ? [
+            { id: 't1', type: 'advance', amount: 200000, date: '2023-10-15', description: 'Adelanto Efectivo' },
+            { id: 't2', type: 'salary', amount: 1100000, date: '2023-09-30', description: 'Nómina Quincenal' },
+        ] : [];
+        setTransactionHistory(mockHistory);
+    }
     
     setTasks(mockTasks.filter(t => t.workerId === w.id));
     setEvents(mockEvents.filter(e => e.workerId === w.id));
 
     setView('Profile');
+  };
+
+  // Helper to persist transactions
+  const saveTransactionsToLS = (workerId: string, txs: Transaction[]) => {
+      const all = JSON.parse(localStorage.getItem('hr_transactions') || '{}');
+      all[workerId] = txs;
+      localStorage.setItem('hr_transactions', JSON.stringify(all));
+  };
+
+  // Helper to update worker balance in global list
+  const updateWorkerBalance = (workerId: string, newBalance: number) => {
+      setWorkers(prev => prev.map(w => w.id === workerId ? { ...w, balance: newBalance } : w));
   };
 
   const formatCurrency = (val: number) => {
@@ -142,7 +178,6 @@ const HR: React.FC = () => {
     const month = date.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const firstDay = new Date(year, month, 1).getDay(); // 0 = Sun
-    // Adjust for Monday start if needed, currently 0=Sun
     return { daysInMonth, firstDay };
   };
 
@@ -164,8 +199,6 @@ const HR: React.FC = () => {
   };
 
   const addEvent = () => {
-    // Check if event exists for date to prevent dups (optional logic)
-    // Remove existing for this demo if overwriting attendance
     let newEvents = events;
     if (eventType === 'Attendance') {
         newEvents = events.filter(e => e.date !== selectedDate || e.type !== 'Attendance');
@@ -182,12 +215,6 @@ const HR: React.FC = () => {
 
     setEvents([...newEvents, newEvent]);
     setShowEventModal(false);
-
-    // If it's a reminder, we could add to global notifications theoretically
-    if(eventType === 'Reminder'){
-        // Just for demo effect, alert user
-        alert(`Recordatorio configurado para el ${selectedDate}`);
-    }
   };
 
   const getEventForDate = (day: number) => {
@@ -195,25 +222,91 @@ const HR: React.FC = () => {
     return events.filter(e => e.date === dateStr);
   };
 
+  // --- PAYMENT LOGIC ---
   const handlePayment = () => {
-     // Simplified payment logic from previous iteration
      const amountToPay = paymentType === 'advance' ? parseInt(customAmount) : 850000;
-     
-     // Use custom description if advance, otherwise default
      const desc = paymentType === 'advance' 
         ? (paymentDescription || 'Adelanto General') 
         : 'Liquidación Nómina';
      
-     if(amountToPay > 0) {
+     if(amountToPay > 0 && selectedWorker) {
         setPaymentSuccess(true);
         setTimeout(() => {
-            const newTx: Transaction = { id: Date.now().toString(), type: paymentType, amount: amountToPay, date: 'Hoy', description: desc };
-            setTransactionHistory([newTx, ...transactionHistory]);
-            setCurrentBalance(prev => prev - amountToPay);
+            const newTx: Transaction = { 
+                id: Date.now().toString(), 
+                type: paymentType, 
+                amount: amountToPay, 
+                date: new Date().toISOString().split('T')[0], 
+                description: desc 
+            };
+            
+            const updatedHistory = [newTx, ...transactionHistory];
+            const newBalance = currentBalance - amountToPay;
+
+            setTransactionHistory(updatedHistory);
+            setCurrentBalance(newBalance);
+            
+            // Persist
+            saveTransactionsToLS(selectedWorker.id, updatedHistory);
+            updateWorkerBalance(selectedWorker.id, newBalance);
+
             setShowPaymentModal(false);
             setPaymentSuccess(false);
-        }, 1500);
+        }, 1000);
      }
+  };
+
+  // --- EDIT & DELETE TRANSACTIONS ---
+  const deleteTransaction = (e: React.MouseEvent, id: string) => {
+      e.stopPropagation();
+      if (!selectedWorker) return;
+
+      if (window.confirm("¿Estás seguro de eliminar este pago? El saldo se ajustará automáticamente.")) {
+          const txToDelete = transactionHistory.find(t => t.id === id);
+          if (txToDelete) {
+              const updatedHistory = transactionHistory.filter(t => t.id !== id);
+              const newBalance = currentBalance + txToDelete.amount;
+
+              setTransactionHistory(updatedHistory);
+              setCurrentBalance(newBalance);
+
+              // Persist
+              saveTransactionsToLS(selectedWorker.id, updatedHistory);
+              updateWorkerBalance(selectedWorker.id, newBalance);
+          }
+      }
+  };
+
+  const startEditTransaction = (e: React.MouseEvent, tx: Transaction) => {
+      e.stopPropagation();
+      setEditingTx(tx);
+      setEditAmount(tx.amount.toString());
+      setEditDesc(tx.description);
+      setEditDate(tx.date); 
+  };
+
+  const saveTransactionEdit = () => {
+      if (!editingTx || !selectedWorker) return;
+      const newAmount = parseInt(editAmount);
+      if (isNaN(newAmount) || newAmount <= 0) return;
+
+      const oldAmount = editingTx.amount;
+      const difference = oldAmount - newAmount; // Positive if we paid less now (owe more)
+
+      const updatedHistory = transactionHistory.map(t => 
+          t.id === editingTx.id ? { ...t, amount: newAmount, description: editDesc, date: editDate } : t
+      );
+      
+      const newBalance = currentBalance + difference;
+
+      setTransactionHistory(updatedHistory);
+      setCurrentBalance(newBalance);
+
+      // Persist
+      saveTransactionsToLS(selectedWorker.id, updatedHistory);
+      updateWorkerBalance(selectedWorker.id, newBalance);
+
+      setEditingTx(null);
   };
 
 
@@ -267,7 +360,56 @@ const HR: React.FC = () => {
                      </div>
                 </div>
 
-                {/* Tasks Section (UPDATED) */}
+                {/* Transaction History */}
+                <div>
+                    <h3 className="font-bold text-lg mb-3 flex items-center gap-2">
+                        <History size={20} className="text-gray-400" />
+                        Historial de Pagos
+                    </h3>
+                    <div className="space-y-3">
+                         {transactionHistory.length === 0 ? (
+                             <p className="text-sm text-gray-500 italic text-center py-4">No hay pagos registrados.</p>
+                         ) : (
+                             transactionHistory.map((tx) => (
+                                <div key={tx.id} className="bg-surface-dark border border-white/5 p-4 rounded-xl relative group">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${tx.type === 'salary' ? 'bg-primary/20 text-primary' : 'bg-accent-amber/20 text-accent-amber'}`}>
+                                                {tx.type === 'salary' ? <Check size={16} /> : <Clock size={16} />}
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-sm text-white">{tx.description}</p>
+                                                <p className="text-[10px] text-gray-500">{tx.date}</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-bold text-white text-sm">-{formatCurrency(tx.amount)}</p>
+                                            <p className="text-[10px] text-gray-400 uppercase">Pagado</p>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Action Buttons */}
+                                    <div className="flex justify-end gap-3 mt-2 border-t border-white/5 pt-2">
+                                        <button 
+                                            onClick={(e) => startEditTransaction(e, tx)}
+                                            className="flex items-center gap-1 text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors p-2 hover:bg-white/5 rounded-lg"
+                                        >
+                                            <Edit2 size={12} /> Editar
+                                        </button>
+                                        <button 
+                                            onClick={(e) => deleteTransaction(e, tx.id)}
+                                            className="flex items-center gap-1 text-xs font-bold text-red-400 hover:text-red-300 transition-colors p-2 hover:bg-white/5 rounded-lg"
+                                        >
+                                            <Trash2 size={12} /> Eliminar
+                                        </button>
+                                    </div>
+                                </div>
+                            ))
+                         )}
+                    </div>
+                </div>
+
+                {/* Tasks Section */}
                 <div>
                     <div className="flex items-center justify-between mb-3">
                         <h3 className="text-lg font-bold text-white">Tareas Vinculadas</h3>
@@ -278,7 +420,7 @@ const HR: React.FC = () => {
                             <Plus size={14} /> Nueva Tarea
                         </button>
                     </div>
-
+                    {/* ... Tasks List code ... */}
                     <div className="space-y-3">
                         {tasks.length === 0 ? (
                             <div className="text-center p-6 border-2 border-dashed border-white/5 rounded-xl text-gray-500 text-sm">
@@ -332,19 +474,17 @@ const HR: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Calendar / Attendance Section (UPDATED) */}
+                {/* Calendar / Attendance Section */}
                 <div className="bg-surface-dark border border-white/5 rounded-2xl p-4">
                     <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center gap-2 font-bold"><Calendar size={18} className="text-primary" /> Asistencia & Eventos</div>
                     </div>
-                    
                     {/* Calendar Header Controls */}
                     <div className="flex items-center justify-between mb-4 bg-surface-darker rounded-lg p-1">
                         <button onClick={prevMonth} className="p-2 hover:bg-white/10 rounded-md text-gray-400 hover:text-white"><ChevronLeft size={20}/></button>
                         <span className="font-bold text-sm">{monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</span>
                         <button onClick={nextMonth} className="p-2 hover:bg-white/10 rounded-md text-gray-400 hover:text-white"><ChevronRight size={20}/></button>
                     </div>
-
                     {/* Calendar Grid */}
                     <div className="grid grid-cols-7 gap-1 text-center mb-2">
                         {['D','L','M','M','J','V','S'].map(d => <span key={d} className="text-[10px] text-gray-500 font-bold">{d}</span>)}
@@ -356,7 +496,6 @@ const HR: React.FC = () => {
                             const hasAttendance = dayEvents.find(e => e.type === 'Attendance');
                             const hasReminder = dayEvents.find(e => e.type === 'Reminder');
                             
-                            // Determine style based on events
                             let bgClass = 'bg-surface-darker text-gray-300';
                             let borderClass = 'border-transparent';
                             
@@ -377,45 +516,12 @@ const HR: React.FC = () => {
                                     className={`aspect-square rounded-lg flex flex-col items-center justify-center text-xs font-bold border relative active:scale-90 transition-transform ${bgClass} ${borderClass}`}
                                 >
                                     {day}
-                                    {/* Reminder Indicator */}
                                     {hasReminder && (
                                         <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-accent-amber rounded-full shadow-sm"></div>
                                     )}
                                 </button>
                             );
                         })}
-                    </div>
-                    <div className="mt-3 flex gap-4 justify-center text-[10px] text-gray-400">
-                        <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-primary/20 border border-primary/30"></div> Presente</span>
-                        <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-500/10 border border-red-500/20"></div> Ausente</span>
-                        <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-accent-amber"></div> Evento</span>
-                    </div>
-                </div>
-
-                {/* Transaction History */}
-                <div>
-                    <h3 className="font-bold text-lg mb-3 flex items-center gap-2">
-                        <History size={20} className="text-gray-400" />
-                        Historial de Pagos
-                    </h3>
-                    <div className="space-y-3">
-                         {transactionHistory.map((tx) => (
-                            <div key={tx.id} className="bg-surface-dark border border-white/5 p-4 rounded-xl flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${tx.type === 'salary' ? 'bg-primary/20 text-primary' : 'bg-accent-amber/20 text-accent-amber'}`}>
-                                        {tx.type === 'salary' ? <Check size={20} /> : <Clock size={20} />}
-                                    </div>
-                                    <div>
-                                        <p className="font-bold text-sm text-white">{tx.description}</p>
-                                        <p className="text-xs text-gray-500">{tx.date}</p>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <p className="font-bold text-white text-sm">-{formatCurrency(tx.amount)}</p>
-                                    <p className="text-[10px] text-gray-400 uppercase">Pagado</p>
-                                </div>
-                            </div>
-                        ))}
                     </div>
                 </div>
              </main>
@@ -431,7 +537,56 @@ const HR: React.FC = () => {
              </div>
 
              {/* ... MODALS ... */}
-             {showTaskModal && (/* ... Task Modal Code (Unchanged) ... */
+             
+             {/* Edit Transaction Modal */}
+             {editingTx && (
+                 <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
+                     <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setEditingTx(null)}></div>
+                     <div className="relative w-full max-w-md bg-surface-dark rounded-t-3xl sm:rounded-3xl border-t sm:border border-white/10 shadow-2xl p-6 animate-in slide-in-from-bottom-5">
+                         <div className="flex justify-between items-center mb-6">
+                             <h3 className="text-xl font-bold">Editar Pago</h3>
+                             <button onClick={() => setEditingTx(null)}><X className="text-gray-400"/></button>
+                         </div>
+                         <div className="space-y-4">
+                             <div>
+                                <label className="text-xs font-bold text-gray-400 block mb-1">Monto</label>
+                                <input 
+                                    type="number" 
+                                    className="w-full bg-surface-darker p-3 rounded-xl text-white font-bold border border-white/5 focus:border-primary outline-none"
+                                    value={editAmount}
+                                    onChange={(e) => setEditAmount(e.target.value)}
+                                />
+                             </div>
+                             <div>
+                                <label className="text-xs font-bold text-gray-400 block mb-1">Fecha</label>
+                                <input 
+                                    type="date" 
+                                    className="w-full bg-surface-darker p-3 rounded-xl text-white border border-white/5 focus:border-primary outline-none"
+                                    value={editDate}
+                                    onChange={(e) => setEditDate(e.target.value)}
+                                />
+                             </div>
+                             <div>
+                                <label className="text-xs font-bold text-gray-400 block mb-1">Descripción</label>
+                                <input 
+                                    type="text" 
+                                    className="w-full bg-surface-darker p-3 rounded-xl text-white border border-white/5 focus:border-primary outline-none"
+                                    value={editDesc}
+                                    onChange={(e) => setEditDesc(e.target.value)}
+                                />
+                             </div>
+                             <button 
+                                onClick={saveTransactionEdit}
+                                className="w-full bg-primary text-black font-bold py-3 rounded-xl mt-2 flex items-center justify-center gap-2"
+                             >
+                                 <Save size={18} /> Guardar Cambios
+                             </button>
+                         </div>
+                     </div>
+                 </div>
+             )}
+
+             {showTaskModal && (/* ... Task Modal Code ... */
                  <div className="fixed inset-0 z-50 bg-background-dark flex flex-col animate-in slide-in-from-bottom-5">
                      <div className="p-4 flex items-center justify-between border-b border-white/5">
                          <button onClick={() => setShowTaskModal(false)} className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors">
@@ -441,8 +596,6 @@ const HR: React.FC = () => {
                          <div className="w-10"></div>
                      </div>
                      <main className="flex-1 overflow-y-auto p-6">
-                         <h1 className="text-3xl font-bold text-white mb-2">Nueva Actividad</h1>
-                         <p className="text-gray-400 text-sm mb-8">Complete los detalles para asignar al personal.</p>
                          <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); addNewTask(); }}>
                              <div>
                                  <label className="flex items-center gap-2 text-sm font-bold text-gray-300 mb-3">
@@ -463,15 +616,13 @@ const HR: React.FC = () => {
                                      <AlignLeft size={18} className="text-primary" />
                                      Descripción
                                  </label>
-                                 <div className="relative">
-                                     <textarea
-                                         value={newTaskDesc}
-                                         onChange={(e) => setNewTaskDesc(e.target.value)}
-                                         placeholder="Describa la tarea detalladamente."
-                                         rows={4}
-                                         className="w-full bg-surface-dark border border-white/10 rounded-2xl p-4 text-gray-300 placeholder-gray-600 focus:border-primary outline-none transition-all resize-none text-sm leading-relaxed"
-                                     />
-                                 </div>
+                                 <textarea
+                                     value={newTaskDesc}
+                                     onChange={(e) => setNewTaskDesc(e.target.value)}
+                                     placeholder="Describa la tarea detalladamente."
+                                     rows={4}
+                                     className="w-full bg-surface-dark border border-white/10 rounded-2xl p-4 text-gray-300 placeholder-gray-600 focus:border-primary outline-none transition-all resize-none text-sm leading-relaxed"
+                                 />
                              </div>
                              <div>
                                  <label className="flex items-center gap-2 text-sm font-bold text-gray-300 mb-3">
@@ -488,16 +639,12 @@ const HR: React.FC = () => {
                              </div>
                              <div>
                                  <label className="block text-sm font-bold text-gray-300 mb-3">Fecha de vencimiento</label>
-                                 <div className="bg-surface-dark border border-white/10 rounded-2xl p-4 flex items-center justify-between group cursor-pointer hover:border-white/20 transition-all relative">
+                                 <div className="bg-surface-dark border border-white/10 rounded-2xl p-4 flex items-center justify-between relative">
                                      <div className="flex items-center gap-4">
                                          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
                                              <Calendar size={24} />
                                          </div>
-                                         <div>
-                                             <p className="font-bold text-white text-base">
-                                                 {newTaskDueDate === new Date().toISOString().split('T')[0] ? 'Para hoy' : newTaskDueDate}
-                                             </p>
-                                         </div>
+                                         <p className="font-bold text-white text-base">{newTaskDueDate}</p>
                                      </div>
                                      <input 
                                         type="date" 
@@ -510,31 +657,7 @@ const HR: React.FC = () => {
                          </form>
                      </main>
                      <div className="p-6 border-t border-white/5 bg-background-dark/95 backdrop-blur-sm">
-                         <button 
-                            onClick={addNewTask}
-                            className="w-full h-14 bg-primary hover:bg-primary-dark text-background-dark font-bold text-lg rounded-full flex items-center justify-center gap-2 active:scale-[0.98] transition-all shadow-lg shadow-primary/20"
-                         >
-                             Asignar Tarea
-                         </button>
-                     </div>
-                 </div>
-             )}
-             
-             {showEventModal && (/* ... Event Modal Code (Unchanged) ... */
-                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                     <div className="bg-surface-dark w-full max-w-sm rounded-2xl border border-white/10 p-6 animate-in zoom-in-95">
-                         <h3 className="text-lg font-bold mb-4">Evento: {selectedDate}</h3>
-                         <div className="space-y-4">
-                             <div className="flex bg-surface-darker p-1 rounded-lg">
-                                 <button onClick={() => setEventType('Attendance')} className={`flex-1 py-2 rounded-md text-xs font-bold transition-colors ${eventType === 'Attendance' ? 'bg-primary text-black' : 'text-gray-400'}`}>Asistencia</button>
-                                 <button onClick={() => setEventType('Reminder')} className={`flex-1 py-2 rounded-md text-xs font-bold transition-colors ${eventType === 'Reminder' ? 'bg-accent-amber text-black' : 'text-gray-400'}`}>Recordatorio</button>
-                             </div>
-                             {eventType === 'Reminder' && <input type="text" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} placeholder="Título del Evento" className="w-full bg-surface-darker border border-white/10 rounded-lg p-3 text-white focus:border-accent-amber outline-none" />}
-                             <div className="flex gap-2 pt-2">
-                                 <button onClick={() => setShowEventModal(false)} className="flex-1 py-3 rounded-xl bg-white/5 font-bold hover:bg-white/10">Cancelar</button>
-                                 <button onClick={addEvent} className="flex-1 py-3 rounded-xl bg-primary text-black font-bold hover:bg-primary-dark">Guardar</button>
-                             </div>
-                         </div>
+                         <button onClick={addNewTask} className="w-full h-14 bg-primary hover:bg-primary-dark text-background-dark font-bold text-lg rounded-full shadow-lg shadow-primary/20">Asignar Tarea</button>
                      </div>
                  </div>
              )}
@@ -572,10 +695,10 @@ const HR: React.FC = () => {
                                                 </div>
                                             </div>
                                             <div>
-                                                <label className="text-xs font-bold text-gray-400 ml-1 mb-1 block">Observación / Motivo</label>
+                                                <label className="text-xs font-bold text-gray-400 ml-1 mb-1 block">Observación</label>
                                                 <textarea
                                                     rows={2}
-                                                    placeholder="Ej: Calamidad doméstica, Compra de víveres..."
+                                                    placeholder="Motivo..."
                                                     className="w-full bg-surface-darker p-3 rounded-xl text-white text-sm outline-none border border-white/5 focus:border-primary transition-colors resize-none"
                                                     value={paymentDescription}
                                                     onChange={e => setPaymentDescription(e.target.value)}
@@ -594,13 +717,13 @@ const HR: React.FC = () => {
     )
   }
 
+  // --- DIRECTORY VIEW ---
   return (
     <div className="min-h-screen bg-background-dark text-white font-display flex flex-col">
        {/* HR Directory Header */}
        <header className="px-4 pt-4 pb-2 sticky top-0 bg-background-dark/95 backdrop-blur-md z-20 border-b border-white/5">
            <div className="flex justify-between items-center mb-4 h-10">
                {isSearchOpen ? (
-                   // Search Bar Active
                    <div className="flex-1 flex items-center bg-white/10 rounded-xl px-3 py-1 animate-in fade-in zoom-in-95 duration-200">
                        <Search size={18} className="text-gray-400 mr-2 shrink-0"/>
                        <input
@@ -612,16 +735,11 @@ const HR: React.FC = () => {
                            className="bg-transparent border-none outline-none text-white w-full text-base placeholder-gray-400 h-9"
                        />
                        {searchQuery && (
-                           <button onClick={() => setSearchQuery('')} className="p-1 text-gray-400 hover:text-white mr-1">
-                               <X size={14} className="bg-gray-600 rounded-full p-0.5" />
-                           </button>
+                           <button onClick={() => setSearchQuery('')} className="p-1 text-gray-400 hover:text-white mr-1"><X size={14} className="bg-gray-600 rounded-full p-0.5" /></button>
                        )}
-                       <button onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="ml-2 text-sm font-bold text-gray-400 hover:text-white whitespace-nowrap">
-                           Cancelar
-                       </button>
+                       <button onClick={() => { setIsSearchOpen(false); setSearchQuery(''); }} className="ml-2 text-sm font-bold text-gray-400 hover:text-white whitespace-nowrap">Cancelar</button>
                    </div>
                ) : (
-                   // Default Header
                    <>
                        <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2">
                            <button onClick={() => navigate(-1)} className="p-1"><ArrowLeft size={20} /></button>
