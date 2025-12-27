@@ -161,6 +161,7 @@ const Settings: React.FC = () => {
               icon={Lock} 
               colorClass="bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400" 
               title="Seguridad y Contraseña" 
+              onClick={() => navigate('/security')}
             />
             <ToggleItem 
               icon={Fingerprint} 

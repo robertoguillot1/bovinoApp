@@ -32,6 +32,7 @@ import CheeseBatchDetail from './pages/CheeseBatchDetail'; // New Import
 import FarmsList from './pages/FarmsList';
 import Settings from './pages/Settings';
 import UserProfile from './pages/UserProfile'; // New Import
+import SecuritySettings from './pages/SecuritySettings'; // New Import
 
 const App: React.FC = () => {
   
@@ -90,6 +91,7 @@ const App: React.FC = () => {
         <Route path="/veterinary-ai/:id" element={<VeterinaryAI />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/profile" element={<UserProfile />} />
+        <Route path="/security" element={<SecuritySettings />} />
       </Routes>
     </HashRouter>
   );
